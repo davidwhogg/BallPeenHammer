@@ -1,0 +1,34 @@
+\documentclass[12pt]{article}
+
+\newcommand{\documentname}{\textsl{Note}}
+\newcommand{\project}[1]{\textsl{#1}}
+
+\begin{document}\sloppy\sloppypar
+
+\noindent{\ttfamily This document is a draft.  It is Copyright 2012
+  David W. Hogg, Ross Fadely, Rob Fergus, and others.  It is not ready
+  for distribution.}
+
+\begin{abstract}
+In astronomical imaging projects, pixel-level calibration (bias, dark,
+and flat) estimated via zero-length exposures and images of an
+illuminated dome or twilight sky may not be optimal for application to
+the measurements of greatest scientific interest.  Furthermore, in
+most present-day experiments, many more photons are collected in the
+scientific object data than in the calibration data.  For these
+reasons, it makes sense to ask whether the full set of calibration
+information could be derived from the science data alone.  In this
+\documentname, we build very flexible models of astronomical imaging
+based on mixtures of Gaussians (really mixtures of factor analyzers)
+and use those models to test and improve pixel-level calibration
+parameters.  We demonstrate with real data from the \project{Sloan
+  Digital Sky Survey} and the \project{Hubble Space Telescope
+  Wide-Field Camera 3} that we can accurately determine calibration
+information using only science data.  Our self-calibration method is
+computationally expensive, but has the advantages that (by
+construction) it infers the parameters that are directly relevant to
+the science data, and that it reduces or obviates calibration
+overheads.
+\end{abstract}
+
+\end{document}
