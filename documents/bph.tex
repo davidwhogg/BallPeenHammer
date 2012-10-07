@@ -1,9 +1,13 @@
 \documentclass[12pt]{article}
 
 \newcommand{\documentname}{\textsl{Note}}
+\newcommand{\equationname}{equation}
 \newcommand{\foreign}[1]{\textsl{#1}}
 \newcommand{\etal}{\foreign{et\,al.}}
 \newcommand{\project}[1]{\textsl{#1}}
+\newcommand{\given}{\,|\,}
+\newcommand{\setofall}[1]{\left\{{#1}\right\}}
+\newcommand{\dd}{\mathrm{d}}
 
 \begin{document}\sloppy\sloppypar
 
@@ -30,12 +34,10 @@ information using only science data.  Our self-calibration method is
 computationally expensive, but has the advantages that (by
 construction) it infers the parameters that are directly relevant to
 the science data, that it captures the large amount of calibration
-information latent in the full scientific data set, and that it
-reduces or obviates calibration overheads.
+information latent in the full scientific data set, it puts almost no
+requirements on repeat imaging or other aspects of survey design, and
+that (of course) it reduces or obviates calibration overheads.
 \end{abstract}
-
-...note to Hogg: abstract needs to mention ``no need to have repeat
-imaging of the same part of the sky''...
 
 \section{Introduction}
 
@@ -58,22 +60,67 @@ factors $m$.  The imaging detector will have $J$ independent pixels
 (or, in the case of \project{SDSS}, pixel columns) $j$.  The detector
 has been used to take $H$ exposures $h$, each of which has (we hope) a
 different exposure time $t_h$ and has seen (we hope) a different
-astronomical scene.
-
+astronomical scene...
 
 ...We need an astronomer-friendly explanation of mixture of factor
-analyzers.  Hogg is at your service.
+analyzers.  Hogg is at your service...
+
+...We need to give the posterior prediction of one pixel's intensity
+given all the neighbors' intensities...
 
 \section{Calibration parameter inference}
 
 ...something like: For every pixel position $j$ in the detector, there
-is a zero level $z_j$, a dark current rate $d_j$, and a sensitivity
-(or effective area) $a_j$.  Detector pixel $j$ also has $7\times
-7-1=48$ (fewer if it is an edge pixel) neighbor pixels $\ell$.  In the
-raw data, in exposure $h$...
+are calibration parameters $\theta_j$ (including possibly a zero level
+$z_j$, a dark current rate $d_j$, and a sensitivity $f_j$).  Detector
+pixel $j$ also has $7\times 7-1=48$ (fewer if it is an edge pixel)
+neighbor pixels $\ell$.  In the raw data, in exposure $h$...
+
+...We are going to assume that our MFA model is a good approximation
+to a prior PDF over possible properly calibrated (though noisy)
+intensities.  That is, we will assume that the calibration parameters
+are \emph{close to correct}...
+
+...likelihood of the parameters given the data---counts $C_{jh}$
+coming from pixel $j$ in exposure $h$---is something like
+\begin{eqnarray}
+p(C_{jh}\given t_h,\theta_j,\alpha) &=& \int_0^\infty \delta(C_{jh} - c_{jh})\,p(I_{jh}\given\setofall{I_{\ell h}}_{\ell=1}^L,\alpha)\,\dd I_{jh}
+\label{eq:calibration}\\
+\theta_j &\equiv& \setofall{z_j, d_j, f_j, \cdots}
+\\
+\alpha &\equiv& \setofall{a_k,m_k,V_k}_{k=1}^K
+\\
+c_{jh} &=& z_j + d_j\,t_h + f_j\,t_h\,I_{jh} + \cdots
+\end{eqnarray}
+where $t_h$ is the exposure time for exposure $h$, $\theta_j$ are the
+calibration parameters for pixel $j$, $\alpha$ is the full parameter
+blob for the MFA model, the integral is over $I_{jh}$, the (true,
+pixel-convolved PSF-convolved) intensity falling on pixel $j$ in
+exposure $h$, $\delta(\cdot)$ is the delta function, $c_{jh}$ is the
+predicted counts given the intensity and exposure time and pixel
+calibration parameters, $p(I_{jh}\given\cdot)$ is the probability of
+getting $I_{jh}$ given the intensities $I_{\ell h}$ of all the
+neighbor pixels $\ell$ in exposure $h$ and the MFA parameter blob
+$\alpha$.  The full expression for this posterior prediction is given
+in \equationname~(??).
+
+The likelihood for the calibration parameters $\theta_j$ given in
+\equationname~(\ref{eq:calibration}) is slightly odd in that it treats
+the data as being generated deterministically from the intensity
+(there is a delta function).  The expression is deterministic rather
+than probabilistic because in the MFA model, the noise in the data is
+implicitly included in the variance tensors of the mixture components.
+In the (common) case that an accurate noise model for the data is
+known, the MFA model could be replaced with a factor-analysis
+generalization of the \project{extreme deconvolution} method (Bovy,
+Hogg \& Roweis 20xx).  This would presumably make the calibration more
+accurate (because it would be incorporating more prior information)
+but at the expense of generality (and, we expect, computer time).
 
 \section{Data and results}
 
 \section{Discussion}
+
+...come back to the \emph{known noise model} issue...
 
 \end{document}
