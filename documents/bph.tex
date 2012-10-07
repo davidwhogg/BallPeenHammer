@@ -29,10 +29,13 @@ parameters.  We demonstrate with real data from the \project{Sloan
 information using only science data.  Our self-calibration method is
 computationally expensive, but has the advantages that (by
 construction) it infers the parameters that are directly relevant to
-the science data, that it captures the large amount of calibration information latent
-in the full scientific data set, and that it reduces or obviates
-calibration overheads.
+the science data, that it captures the large amount of calibration
+information latent in the full scientific data set, and that it
+reduces or obviates calibration overheads.
 \end{abstract}
+
+...note to Hogg: abstract needs to mention ``no need to have repeat
+imaging of the same part of the sky''...
 
 \section{Introduction}
 
@@ -47,10 +50,27 @@ papers or the same paper.
 
 \section{Image patch model}
 
+...Hogg proposes that we be very consistent with indexing.  I propose
+that we have $N$ $d$-pixel (say $d=49$ or $81$) image patches $n$ on
+which we train the model.  The model will have $K$ Gaussian components
+$k$, each of which is a mixture of factor analyzers with $M\ll d$
+factors $m$.  The imaging detector will have $J$ independent pixels
+(or, in the case of \project{SDSS}, pixel columns) $j$.  The detector
+has been used to take $H$ exposures $h$, each of which has (we hope) a
+different exposure time $t_h$ and has seen (we hope) a different
+astronomical scene.
+
+
 ...We need an astronomer-friendly explanation of mixture of factor
 analyzers.  Hogg is at your service.
 
 \section{Calibration parameter inference}
+
+...something like: For every pixel position $j$ in the detector, there
+is a zero level $z_j$, a dark current rate $d_j$, and a sensitivity
+(or effective area) $a_j$.  Detector pixel $j$ also has $7\times
+7-1=48$ (fewer if it is an edge pixel) neighbor pixels $\ell$.  In the
+raw data, in exposure $h$...
 
 \section{Data and results}
 
