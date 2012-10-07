@@ -1,4 +1,7 @@
-BallPeenHammer
-==============
+Ball-Peen Hammer
+================
 
-calibrating zeros, darks, and flats by science data alone
+*A few love taps with the **Ball Peen Hammer** and everything's flat!*
+
+A project to self-calibrate all astronomical imaging: Inferring zeros,
+darks, and flats with the *science data alone*.
