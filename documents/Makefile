@@ -1,4 +1,4 @@
-all: bph.pdf
+all: bph.pdf flatfield.pdf
 
 %.pdf: %.tex
 	pdflatex $<
