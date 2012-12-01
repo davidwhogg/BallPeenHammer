@@ -1,0 +1,74 @@
+\documentclass[12pt,preprint,pdftex]{aastex}
+
+\newcommand{\project}[1]{\textsl{#1}}
+
+\begin{document}
+
+\title{Don't waste your time taking flats!}
+\author{
+  Ross~Fadely\altaffilmark{1,2},
+  David~W.~Hogg\altaffilmark{1,3},
+  Daniel~Foreman-Mackey\altaffilmark{1}
+  Dilip~Krishnan\altaffilmark{4}, and
+  Rob~Fergus\altaffilmark{4}
+}
+\altaffiltext{1}{Center for Cosmology and Particle Physics, Department of Physics, New York University, 4 Washington Place, New York, NY 10003, USA}
+\altaffiltext{2}{To whom correspondence should be addressed.}
+\altaffiltext{3}{Max-Planck-Institut f\"ur Astronomie, K\"onigstuhl 17, D-69117 Heidelberg, Germany}
+\altaffiltext{4}{Department of Computer Science, New York University}
+
+\begin{abstract}
+Typical astronomical imaging devices measure the intensity field but
+only after multiplication by a non-uniform pixel sensitivity (flat
+field) and offset by a non-uniform zero or dark image (plus noise and
+sometimes nonlinearities).  Measurements of the flat-field and dark
+are usually made with calibration images taken during an observing
+campaign.  When it comes to the flat-field, none of the calibration
+images that can be easily taken illuminate the detector in precisely
+the same way as an astronomical source would.  Here we show that the
+flat-field and dark properties of a detector can be inferred from the
+science data alone, without the use of any calibration data
+whatsoever, provided that the science data set is large and diverse
+enough in its properties.  The method operates by building a
+data-driven ($K$-nearest-neighbors) model of small image patches and
+then adjusting the dark and flat until the statistical properties of
+small pixel patches become uniform across the device.  We demonstrate
+our methods on \project{Sloan Digital Sky Survey} data.
+Computationally, calibration of a device using the science data alone
+is expensive, but it has the great advantage that the device is being
+calibrated with correct illumination, by construction.
+\end{abstract}
+
+\noindent
+\textsl{This document is a DRAFT dated 2012-11-21, not ready for distribution.}
+
+\section{Introduction}
+
+Why both twilight and dome flats suck, twilight in particular.
+
+Superflats are the same as twis.  SDSS scary story.
+
+Stars illuminate the detector precisely as stars do!
+
+\section{Method}
+
+In short, the algorithm is:
+\begin{enumerate}
+\item Make a first guess at the flat and dark.  Each of these is an image with device pixels $i$.
+\item Calibrate the science imaging data; that is, subtract the dark (times the exposure time) and divide by the flat.\label{step:calibrate}
+\item Cut the calibrated imaging data into small $d$-dimensional patches $n$.
+\item Loop over device pixels $i$.
+\item Loop over patches $n$ that have device pixel $i$ in the ``central pixel'' location.
+\item Find the $K$ nearest neighbor patches $k$ to patch $n$, where by ``nearest neighbor'' we mean nearest in the $d-1$ dimensional space excluding the central pixel, and possibly also subject to optimal rescaling and offsetting, and definitely also excluding patches that touch device pixel $i$.
+\item Loop over neighbor patches $k$.
+\item Find the optimal shift and scale in intensity that makes the $d-1$ non-central pixels in patch $k$ look most like the $d-1$ non-central pixels in patch $n$.  After that optimal shift and scale, the central pixel of patch $k$ has value $I_{nk}$.
+\item End loop over neighbor patches $k$.  Compute the mean $m_n$ and variance $\sigma^2_n$ of the values $I_{nk}$ over neighbors $k$.
+\item Compute the probability of the central pixel of patch $n$ under the single Gaussian with mean $m_n$ and variance $\sigma^2_n$ as a function of adjustments $(\Delta d_i, \Delta f_i)$ to the dark and flat at device pixel $i$.  This is the patch-$n$ likelihood function for adjustments to pixel $i$.
+\item End loop over patches $n$.  Compute the product of the patch-$n$ likelihoods (or sum of log likelihoods) for adjustments to pixel $i$.
+\item Update the dark and flat for pixel $i$.
+\item End loop over device pixels $i$.  Renormalize flat so the mean flat is unity.
+\item Iterate by returning to step~\ref{step:calibrate}.
+\end{enumerate}
+
+\end{document}
+
