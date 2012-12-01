@@ -54,18 +54,18 @@ Stars illuminate the detector precisely as stars do!
 
 In short, the algorithm is:
 \begin{enumerate}
-\item Make a first guess at the flat and dark.  Each of these is an image with device pixels $i$.
+\item Make a first guess at the flat and dark.  Each of these is an image in device pixels $i$; that is, there is one dark value $d_i$ and one flat value $f_i$ per device pixel $i$.
 \item Calibrate the science imaging data; that is, subtract the dark (times the exposure time) and divide by the flat.\label{step:calibrate}
-\item Cut the calibrated imaging data into small $d$-dimensional patches $n$.
-\item Loop over device pixels $i$.
-\item Loop over patches $n$ that have device pixel $i$ in the ``central pixel'' location.
-\item Find the $K$ nearest neighbor patches $k$ to patch $n$, where by ``nearest neighbor'' we mean nearest in the $d-1$ dimensional space excluding the central pixel, and possibly also subject to optimal rescaling and offsetting, and definitely also excluding patches that touch device pixel $i$.
-\item Loop over neighbor patches $k$.
-\item Find the optimal shift and scale in intensity that makes the $d-1$ non-central pixels in patch $k$ look most like the $d-1$ non-central pixels in patch $n$.  After that optimal shift and scale, the central pixel of patch $k$ has value $I_{nk}$.
-\item End loop over neighbor patches $k$.  Compute the mean $m_n$ and variance $\sigma^2_n$ of the values $I_{nk}$ over neighbors $k$.
+\item Cut the calibrated imaging data into small $D$-pixel patches $n$.
+\item Begin loop over device pixels $i$.
+\item Begin loop over patches $n$ that have device pixel $i$ in the ``central pixel'' location.
+\item Find the $K$ nearest neighbor patches $k$ to patch $n$, where by ``nearest neighbor'' we mean nearest in the $D-1$ dimensional space excluding the central pixel, and possibly also subject to optimal rescaling and offsetting, and definitely also excluding patches that touch device pixel $i$.
+\item Begin loop over neighbor patches $k$.
+\item Find the optimal shift and scale in intensity that makes the $D-1$ non-central pixels in patch $k$ look most like the $D-1$ non-central pixels in patch $n$.  After that optimal shift and scale, the central pixel of patch $k$ has value $I_{nk}$.
+\item End loop over neighbor patches $k$.  Compute the mean $m_n$ and variance $\sigma^2_n$ of the values $I_{nk}$ over the $K$ neighbors $k$.
 \item Compute the probability of the central pixel of patch $n$ under the single Gaussian with mean $m_n$ and variance $\sigma^2_n$ as a function of adjustments $(\Delta d_i, \Delta f_i)$ to the dark and flat at device pixel $i$.  This is the patch-$n$ likelihood function for adjustments to pixel $i$.
-\item End loop over patches $n$.  Compute the product of the patch-$n$ likelihoods (or sum of log likelihoods) for adjustments to pixel $i$.
-\item Update the dark and flat for pixel $i$.
+\item End loop over patches $n$.  Compute the product of the patch-$n$ likelihoods (or sum of log likelihoods).  Optimize this total likelihood for pixel $i$ to obtain adjustments to the dark and flat at pixel $i$.
+\item Update the dark and flat at pixel $i$.
 \item End loop over device pixels $i$.  Renormalize flat so the mean flat is unity.
 \item Iterate by returning to step~\ref{step:calibrate}.
 \end{enumerate}
