@@ -93,7 +93,8 @@ if __name__=='__main__':
     flat = np.ones(side**2).reshape((side,side))
     flat = np.linspace(0.90,1.1,side)
     flat = np.tile(flat,(side,1))
-    dark = np.ones(side**2).reshape((side,side))
+    dark = np.atleast_2d(np.linspace(-0.03,0.03,side))
+    dark = np.tile(dark.T,(1,side))
     hwhm = 1.5
     f = FakeField(flat,dark,
                   0.03,
