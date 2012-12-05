@@ -1,7 +1,5 @@
 import numpy as np
 
-import time
-
 class FakeField(object):
 
     def __init__(self,flat,dark,
@@ -40,14 +38,12 @@ class FakeField(object):
 
         x, y = np.meshgrid(range(self.shape[0]),range(self.shape[1]))
 
-        t0 = time.time()
         for i in range(self.N):
             ind = (x<=self.x0s[i] + self.window*self.psfsigma) & (x>=self.x0s[i] - self.window*self.psfsigma) & \
                 (y<=self.y0s[i] + self.window*self.psfsigma) & (y>=self.y0s[i] - self.window*self.psfsigma)
             self.image[ind] += self.fluxes[i] * np.exp(-0.5 * ((x[ind]-self.x0s[i]) ** 2 +
                                                         (y[ind]-self.y0s[i]) ** 2)
                         / self.psfsigma ** 2) / np.sqrt(2. * np.pi * self.psfsigma ** 2)
-        print time.time()-t0
 
     def draw_fluxes(self):
         r = np.random.rand(self.N)
