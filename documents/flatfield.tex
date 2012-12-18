@@ -44,9 +44,9 @@ calibrated with correct illumination, by construction.
 
 \section{Introduction}
 
-Why both twilight and dome flats suck, twilight in particular.
+Why both twilight and dome flats suck, twilight in particular.  Illumination and spectral issues.
 
-Superflats are the same as twis.  SDSS scary story.
+Superflats are the same as twis, people!  SDSS scary story.
 
 Stars illuminate the detector precisely as stars do!
 
@@ -69,6 +69,25 @@ In short, the algorithm is:
 \item End loop over device pixels $i$.  Renormalize flat so the mean flat is unity.
 \item Iterate by returning to step~\ref{step:calibrate}.
 \end{enumerate}
+
+(In the above, we need to be clear about flips and rotations.)
+
+\section{Experiments and results}
+
+\section{Discussion}
+
+There are many knobs in this project.  We set them heuristically.
+Next time we should set them objectively, perhaps with
+cross-validation.
+
+Eventual combination of this kind of patch method, engineering data,
+and more normal astronomical self-calibration or grid-test
+information.  Cite Padmanabhan again and Holmes.
+
+Important scientific result would be whether the flats we get by this
+patch method will be different from twis, for all the reasons we
+outline in the introduction.  We leave that exciting conclusion to the
+next paper.
 
 \end{document}
 
