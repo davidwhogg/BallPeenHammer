@@ -1,3 +1,4 @@
+
 import sys
 sys.path.append('/home/rfadely/flann/src/python')
 sys.path.append('/home/rfadely/sdss-mixtures/code')
@@ -11,17 +12,22 @@ import pyfits as pf
 import matplotlib.pyplot as pl
 
 class Calibrator(object):
-
-    def __init__(self,filelist,k=8,max_iters=1,
+    """
+    Add dflatclip comment
+    """
+    def __init__(self,filelist,outbase,
+                 k=9,max_iters=1,
                  patchshape = (5,5),
+                 trueflat=None,truedark=None,
+                 truesky=None,
                  flat=None,dark=None,
                  hivar=True,lovar=True,
                  flatonly=False,
+                 dflatclip=0.1, 
                  nn_precision=0.99):
 
-        assert patchshape[0] % 2 != 0, 'Patch side must be odd'
-        assert patchshape[0]==patchshape[1], \
-            'Patch must be square'
+        assert patchshape[0] % 2 != 0, 'Patch xside must be odd'
+        assert patchshape[1] % 2 != 0, 'Patch yside must be odd'
 
 
         self.k = k
@@ -30,10 +36,15 @@ class Calibrator(object):
         self.iters = 0
         self.lovar = lovar
         self.hivar = hivar
-        self.flatonly = flatonly
         self.Nimages = len(filelist)
+        self.outbase = outbase
+        self.truesky = truesky
+        self.trueflat = trueflat
+        self.truedark = truedark
+        self.flatonly = flatonly
         self.filelist = filelist
         self.max_iters = max_iters
+        self.dflatclip = dflatclip
         self.patchshape = patchshape
         self.nn_precision = nn_precision
 
@@ -41,27 +52,46 @@ class Calibrator(object):
 
     def run_calibrator(self):
 
-        # below here will be moved to 
-        # an iterated loop
-        self.load_images()
-        self.break_images()
-        self.calibrate_images()
-        self.patchify()
-        self.sort()
-        self.images = 0.0 # dump images
-        t0 = time.time()
-        print 'Starting NNs lookup'
-        self.nns()
-        print 'Done NNs, took %f' % (time.time()-t0)
-        self.make_mask()
-        self.calibration_step()
+        for i in range(self.max_iters):
+            titer0 = time.time()
+            self.load_images()
+            if self.trueflat!=None:
+                self.break_images()
+            self.calibrate_images()
+            self.patchify()
+            self.sort()
+            self.images = 0.0 # dump images
+            t0 = time.time()
+            print 'Starting NNs lookup'
+            self.nns()
+            print 'Done NNs, took %f' % (time.time()-t0)
+            self.make_mask()
+            self.calibration_step()
 
-        self.dd1 = self.delta_dark.copy()
-        self.df1 = self.delta_flat.copy()
+            self.iters += 1
 
-        # change flat/dark models
-        self.flat += self.df1.reshape(self.imgshape)
-        self.dark += self.dd1.reshape(self.imgshape)
+            self.delta_dark = self.delta_dark.reshape(self.imgshape)
+            self.delta_flat = self.delta_flat.reshape(self.imgshape)
+
+            # change flat/dark models
+            
+            self.flat += np.clip(self.delta_flat, 
+                                 -self.dflatclip, self.dflatclip)
+            self.dark += self.delta_dark
+
+            # renormalize
+            self.flat = self.flat / np.median(self.flat)
+
+            # write out calib image for step
+            h = pf.PrimaryHDU(self.delta_dark)
+            h.writeto(self.outbase+'_'+'Ddark_'+str(self.iters)+'.fits')
+            h = pf.PrimaryHDU(self.delta_flat)
+            h.writeto(self.outbase+'_'+'Dflat_'+str(self.iters)+'.fits')
+            h = pf.PrimaryHDU(self.dark)
+            h.writeto(self.outbase+'_'+'dark_'+str(self.iters)+'.fits')
+            h = pf.PrimaryHDU(self.flat)
+            h.writeto(self.outbase+'_'+'flat_'+str(self.iters)+'.fits')
+            print 'Iter %f took %fs' % (self.iters,time.time()-titer0)
 
     def load_images(self):
         """
@@ -85,13 +115,18 @@ class Calibrator(object):
             self.images[0].shape[1]
 
     def break_images(self):
+        """
+        Set 'truth'
+        """
+        if self.truedark==None:
+            self.truedark = np.zeros(self.imgshape)
+        if self.truesky==None:
+            self.truesky = np.zeros(self.imgshape)
 
         for i in range(self.images.shape[0]):
-            self.images[i] += self.dark
-            self.images[i] *= self.flat
-
-        self.flat = None
-        self.dark = None
+            self.images[i] += self.truesky
+            self.images[i] *= self.trueflat
+            self.images[i] += self.truedark
 
     def calibrate_images(self):
         """
@@ -99,13 +134,11 @@ class Calibrator(object):
         """
         # simple initial flat, darks if not given
         if self.flat==None:
+            print 'Initializing flat as ones'
             self.flat = np.ones(self.images[0].shape)
         if self.dark==None:
-            ind = np.random.permutation(len(self.images))
-            ind = ind[:0.1 * ind.shape[0]] # use a tenth for 
-                                           # dark estimation
-            self.dark = np.zeros(self.images[0].shape) + \
-                np.median(self.images[ind])
+            print 'Initializing \'dark\' as zeros'
+            self.dark = np.zeros(self.images[0].shape) 
 
         for i in range(self.images.shape[0]):
             self.images[i] -= self.dark
@@ -133,6 +166,7 @@ class Calibrator(object):
         Create patches from image
         """
         patchshape = self.patchshape # kill me now
+        cpx = (self.patchshape[0] * self.patchshape[1] - 1) / 2
         p = Patches(d,np.ones(d.shape),pshape=patchshape,flip=False)
     
         var = np.var(p.data,axis=1)
@@ -145,12 +179,12 @@ class Calibrator(object):
             # get high var patches
             ind = var>thresh
             hi  = p.data[ind,:]
-            hids = p.indices[ind,(patchshape[0]*patchshape[1]-1)/2+1] # odd patch
+            hids = p.indices[ind,cpx]
         if self.lovar:
             # get low var patches
             ind = var<thresh
             lo  = p.data[ind,:]
-            lids = p.indices[ind,(patchshape[0]*patchshape[1]-1)/2+1] # odd patch
+            lids = p.indices[ind,cpx] # odd patch
             ind = np.random.permutation(lo.shape[0])
             lo  = lo[ind[:hi.shape[0]],:]
             lids = lids[ind[:hi.shape[0]]]
@@ -171,11 +205,16 @@ class Calibrator(object):
         self.ids  = self.ids[ind]
         self.bins = np.bincount(self.ids)
 
+        coverage = np.zeros(self.imgshape).ravel()
+        coverage[:self.ids.max()+1] += self.bins
+        h = pf.PrimaryHDU(coverage.reshape(self.imgshape))
+        h.writeto(self.outbase+'_coverage_'+str(self.iters)+'.fits')
+
     def nns(self):
-        pix = (self.patchshape[0] ** 2 - 1) / 2
-        vals = self.data[:,pix]
-        foo = np.append(np.arange(pix, dtype=int),
-                        np.arange(pix, dtype=int) + pix + 1)
+        cpx = (self.patchshape[0] * self.patchshape[1] - 1) / 2
+        vals = self.data[:,cpx]
+        foo = np.append(np.arange(cpx, dtype=int),
+                        np.arange(cpx, dtype=int) + cpx + 1)
         data = self.data[:,foo]
 
         flann = FLANN()
@@ -193,14 +232,14 @@ class Calibrator(object):
         mask = np.ones((np.sqrt(self.Npix),
                         np.sqrt(self.Npix)),
                        dtype='int')
-        Npad = (self.patchshape[0]-1)/2
-        for i in range(Npad):
-            mask[i,:] = 0
-            mask[:,i] = 0
-            i += 1
-            mask[-i,:] = 0
-            mask[:,-i] = 0
+        xpad = (self.patchshape[0]-1)/2
+        ypad = (self.patchshape[1]-1)/2
 
+        mask[:xpad,:] = 0
+        mask[-(xpad+1):,:] = 0
+        mask[:,:ypad] = 0
+        mask[:,-(ypad+1):] = 0
+        
         self.mask = mask.ravel()
 
 
@@ -214,7 +253,7 @@ class Calibrator(object):
         curr = 0
         idx = np.arange(self.ids.max()+1)
         for i in range(self.bins.shape[0]):
-            if (self.mask[idx[i]]>0) & (self.bins[i]>1):
+            if (self.mask[idx[i]]>0) & (self.bins[i]>2):
                 nns = self.cpx_nns[curr: \
                                    curr+self.bins[i],:]
 
@@ -226,7 +265,8 @@ class Calibrator(object):
                 vals = self.cpx_vals[curr:curr+self.bins[i]]
                 # weighted least squares
                 if self.flatonly:
-                    self.delta_flat[idx[i]] = np.dot(m * iv, vals) / np.dot(m * iv, m) - 1.
+                    self.delta_flat[idx[i]] = np.dot(m * iv, vals) / \
+                        np.dot(m * iv, m) - 1.
                 else:
                     A = np.vstack(np.ones_like(m), m)
                     ATAinv = np.linalg.inv(np.dot(A * iv, A.T))
