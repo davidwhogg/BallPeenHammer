@@ -1,4 +1,5 @@
 
+
 import sys
 sys.path.append('/home/rfadely/flann/src/python')
 sys.path.append('/home/rfadely/sdss-mixtures/code')
@@ -80,6 +81,7 @@ class Calibrator(object):
             self.dark += self.delta_dark
 
             # renormalize
+            self.dark = self.dark - np.median(self.dark)
             self.flat = self.flat / np.median(self.flat)
 
             # write out calib image for step
@@ -280,9 +282,3 @@ class Calibrator(object):
                 #    (i,float(curr)/self.data.shape[0])
             curr += self.bins[i]
 
-        print ncal,np.unique(self.ids).shape
-        ind = self.bins!=0
-        print np.median(self.bins[ind])
-        print np.min(self.bins[ind])
-        print np.max(self.bins[ind])
-        print np.std(self.bins[ind])
