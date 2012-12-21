@@ -148,6 +148,7 @@ class Calibrator(object):
 
     def patchify(self):
         """
+        Make patches from images
         """
         for i in range(self.images.shape[0]):
             d,ids = self.patchify_one(self.images[i])
@@ -165,7 +166,7 @@ class Calibrator(object):
 
     def patchify_one(self,d):
         """
-        Create patches from image
+        Create patches from one image, cut on variance
         """
         patchshape = self.patchshape # kill me now
         cpx = (self.patchshape[0] * self.patchshape[1] - 1) / 2
@@ -201,7 +202,9 @@ class Calibrator(object):
             return lo,lids
 
     def sort(self):
-
+        """
+        Sort patches in pixel ID order
+        """
         ind = np.argsort(self.ids)
         self.data = self.data[ind]
         self.ids  = self.ids[ind]
@@ -213,6 +216,9 @@ class Calibrator(object):
         h.writeto(self.outbase+'_coverage_'+str(self.iters)+'.fits')
 
     def nns(self):
+        """
+        Use flann to calculate kNNs
+        """
         cpx = (self.patchshape[0] * self.patchshape[1] - 1) / 2
         vals = self.data[:,cpx]
         foo = np.append(np.arange(cpx, dtype=int),
@@ -230,7 +236,9 @@ class Calibrator(object):
         self.cpx_nns  = vals[self.nn_inds]
 
     def make_mask(self):
-
+        """
+        Masking around edges
+        """
         mask = np.ones((np.sqrt(self.Npix),
                         np.sqrt(self.Npix)),
                        dtype='int')
@@ -246,12 +254,12 @@ class Calibrator(object):
 
 
     def calibration_step(self):
-
-
+        """
+        Calculate the delta dark, flat
+        """
         self.delta_dark = self.dark.ravel() * 0.0 
         self.delta_flat = self.flat.ravel() * 0.0 
 
-        ncal = 0
         curr = 0
         idx = np.arange(self.ids.max()+1)
         for i in range(self.bins.shape[0]):
@@ -276,9 +284,8 @@ class Calibrator(object):
                     rs = np.dot(ATAinv, ATb)
                     self.delta_dark[idx[i]] = rs[0]
                     self.delta_flat[idx[i]] = rs[1] - 1
-                ncal += 1
-            if i%(self.Npix/64)==0: print i,self.delta_dark.min(),self.delta_dark.max()
-                #print 'Calibrated pixel %6.0f, %1.2f of total' % \
-                #    (i,float(curr)/self.data.shape[0])
+            if i%(self.Npix/64)==0: 
+                print 'Calibrated pixel %6.0f, %1.2f of total' % \
+                    (i,float(curr)/self.data.shape[0])
             curr += self.bins[i]
 
