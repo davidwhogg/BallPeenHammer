@@ -48,6 +48,7 @@ class Calibrator(object):
         self.dflatclip = dflatclip
         self.patchshape = patchshape
         self.nn_precision = nn_precision
+        self.img2patch_inds = {}
 
         # Save 'true' flat/dark
         h = pf.PrimaryHDU(self.trueflat)
@@ -165,7 +166,7 @@ class Calibrator(object):
         Make patches from images
         """
         for i in range(self.images.shape[0]):
-            d,ids = self.patchify_one(self.images[i])
+            d,ids = self.patchify_one(i,self.images[i])
             if i==0:
                 Npatches = d.shape[0]
                 self.data = np.zeros((Npatches*self.Nimages,
@@ -178,7 +179,7 @@ class Calibrator(object):
 
         assert np.all(self.data[-1,:]!=0.0)
 
-    def patchify_one(self,d):
+    def patchify_one(self,i,d):
         """
         Create patches from one image, cut on variance
         """
@@ -186,34 +187,27 @@ class Calibrator(object):
         cpx = (self.patchshape[0] * self.patchshape[1] - 1) / 2
         p = Patches(d,np.ones(d.shape),pshape=patchshape,flip=False)
     
-        var = np.var(p.data,axis=1)
-        v   = np.sort(var)
-        thresh = v[0.99 * v.shape[0]] # magic number 0.99 from 
-                                      # inspecting var dist.
-        hi = np.array([])
-        lo = np.array([])
-        if self.hivar:
-            # get high var patches
-            ind = var>thresh
-            hi  = p.data[ind,:]
-            hids = p.indices[ind,cpx]
-        if self.lovar:
-            # get low var patches
-            ind = var<thresh
-            lo  = p.data[ind,:]
-            lids = p.indices[ind,cpx] # odd patch
-            ind = np.random.permutation(lo.shape[0])
-            lo  = lo[ind[:hi.shape[0]],:]
-            lids = lids[ind[:hi.shape[0]]]
+        # record the indices of the variance cuts once
+        if self.iters==0:
+            var = np.var(p.data,axis=1)
+            v   = np.sort(var)
+            thresh = v[0.99 * v.shape[0]] # magic number 0.99 from 
+                                          # inspecting var dist.
+            ind = np.where(var>thresh)[0]
+            if self.hivar:
+                self.img2patch_inds[i] = ind
+            if self.lovar:
+                idx = np.random.shuffle(np.where(var<thresh)[0])
+                idx = idx[:p.data[ind,:].shape[0]]
+                if self.hivar:
+                    self.img2patch_inds[i] = np.append(ind,idx)
+                else:
+                    self.img2patch_inds[i] = idx
 
-        if (self.hivar) & (self.lovar):
-            outd = np.concatenate((hi,lo))
-            outids = np.concatenate((hids,lids))
-            return outd,outids
-        if (self.hivar):
-            return hi,hids
-        if (self.lovar):
-            return lo,lids
+
+        inds = self.img2patch_inds[i]
+        return p.data[inds,:],p.indices[inds,cpx]
+
 
     def sort(self):
         """
