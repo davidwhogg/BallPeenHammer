@@ -49,6 +49,12 @@ class Calibrator(object):
         self.patchshape = patchshape
         self.nn_precision = nn_precision
 
+        # Save 'true' flat/dark
+        h = pf.PrimaryHDU(self.trueflat)
+        h.writeto(self.outbase+'_trueflat.fits')
+        h = pf.PrimaryHDU(self.truedark)
+        h.writeto(self.outbase+'_truedark.fits')
+
         self.run_calibrator()
 
     def run_calibrator(self):
@@ -86,13 +92,13 @@ class Calibrator(object):
 
             # write out calib image for step
             h = pf.PrimaryHDU(self.delta_dark)
-            h.writeto(self.outbase+'_'+'Ddark_'+str(self.iters)+'.fits')
+            h.writeto(self.outbase+'_Ddark_'+str(self.iters)+'.fits')
             h = pf.PrimaryHDU(self.delta_flat)
-            h.writeto(self.outbase+'_'+'Dflat_'+str(self.iters)+'.fits')
+            h.writeto(self.outbase+'_Dflat_'+str(self.iters)+'.fits')
             h = pf.PrimaryHDU(self.dark)
-            h.writeto(self.outbase+'_'+'dark_'+str(self.iters)+'.fits')
+            h.writeto(self.outbase+'_dark_'+str(self.iters)+'.fits')
             h = pf.PrimaryHDU(self.flat)
-            h.writeto(self.outbase+'_'+'flat_'+str(self.iters)+'.fits')
+            h.writeto(self.outbase+'_flat_'+str(self.iters)+'.fits')
             print 'Iter %f took %fs' % (self.iters,time.time()-titer0)
 
     def load_images(self):
@@ -130,6 +136,7 @@ class Calibrator(object):
             self.images[i] *= self.trueflat
             self.images[i] += self.truedark
 
+
     def calibrate_images(self):
         """
         Calibrate data with current flat, dark models
@@ -145,6 +152,13 @@ class Calibrator(object):
         for i in range(self.images.shape[0]):
             self.images[i] -= self.dark
             self.images[i] /= self.flat
+
+        if self.iters==0:
+            # Save initial flat/dark
+            h = pf.PrimaryHDU(self.flat)
+            h.writeto(self.outbase+'_initflat.fits')
+            h = pf.PrimaryHDU(self.truedark)
+            h.writeto(self.outbase+'_initdark.fits')
 
     def patchify(self):
         """
