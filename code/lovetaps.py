@@ -1,3 +1,5 @@
+
+
 import sys
 sys.path.append('/home/rfadely/flann/src/python')
 sys.path.append('/home/rfadely/sdss-mixtures/code')
@@ -8,43 +10,133 @@ import time
 
 import numpy as np
 import pyfits as pf
+import matplotlib.pyplot as pl
 
 class Calibrator(object):
-
-    def __init__(self,filelist,k=8,iters=1,
+    """
+    Add dflatclip comment
+    """
+    def __init__(self,filelist,outbase,
+                 k=9,max_iters=1,
                  patchshape = (5,5),
+                 trueflat=None,truedark=None,
+                 truesky=None,
                  flat=None,dark=None,
+                 hivar=True,lovar=True,
+                 flatonly=False,
+                 dflatclip=0.1, 
                  nn_precision=0.99):
 
-        assert patchshape[0] % 2 != 0, 'Patch side must be odd'
-        assert patchshape[0]==patchshape[1], \
-            'Patch must be square'
+        assert patchshape[0] % 2 != 0, 'Patch xside must be odd'
+        assert patchshape[1] % 2 != 0, 'Patch yside must be odd'
 
 
         self.k = k
         self.flat = flat
         self.dark = dark
+        self.iters = 0
+        self.lovar = lovar
+        self.hivar = hivar
+        self.Nimages = len(filelist)
+        self.outbase = outbase
+        self.truesky = truesky
+        self.trueflat = trueflat
+        self.truedark = truedark
+        self.flatonly = flatonly
         self.filelist = filelist
+        self.max_iters = max_iters
+        self.dflatclip = dflatclip
         self.patchshape = patchshape
         self.nn_precision = nn_precision
+        self.img2patch_inds = {}
 
-        self.load_images()
-        self.calibrate_images()
-        self.patchify()
-        self.nn_model()
+        # Save 'true' flat/dark
+        h = pf.PrimaryHDU(self.trueflat)
+        h.writeto(self.outbase+'_trueflat.fits')
+        h = pf.PrimaryHDU(self.truedark)
+        h.writeto(self.outbase+'_truedark.fits')
+
+        self.run_calibrator()
+
+    def run_calibrator(self):
+
+        for i in range(self.max_iters):
+            titer0 = time.time()
+            self.load_images()
+            if self.trueflat!=None:
+                self.break_images()
+            self.calibrate_images()
+            self.patchify()
+            self.sort()
+            self.images = 0.0 # dump images
+            t0 = time.time()
+            print 'Starting NNs lookup'
+            self.nns()
+            print 'Done NNs, took %f' % (time.time()-t0)
+            self.make_mask()
+            self.calibration_step()
+
+            self.iters += 1
+
+            self.delta_dark = self.delta_dark.reshape(self.imgshape)
+            self.delta_flat = self.delta_flat.reshape(self.imgshape)
+
+            # change flat/dark models
+            
+            self.flat += np.clip(self.delta_flat, 
+                                 -self.dflatclip, self.dflatclip)
+            self.dark += self.delta_dark
+
+            # renormalize
+            self.dark = self.dark - np.median(self.dark)
+            self.flat = self.flat / np.median(self.flat)
+
+            # write out calib image for step
+            h = pf.PrimaryHDU(self.delta_dark)
+            h.writeto(self.outbase+'_Ddark_'+str(self.iters)+'.fits')
+            h = pf.PrimaryHDU(self.delta_flat)
+            h.writeto(self.outbase+'_Dflat_'+str(self.iters)+'.fits')
+            h = pf.PrimaryHDU(self.dark)
+            h.writeto(self.outbase+'_dark_'+str(self.iters)+'.fits')
+            h = pf.PrimaryHDU(self.flat)
+            h.writeto(self.outbase+'_flat_'+str(self.iters)+'.fits')
+            print 'Iter %f took %fs' % (self.iters,time.time()-titer0)
 
     def load_images(self):
         """
         Create numpy array of image data
         """
-        self.images = []
-        for i in range(len(self.filelist)):
+
+        for i in range(self.Nimages):
             f = pf.open(self.filelist[i])
-            self.images.append(f[0].data)
+            if i==0:
+                self.images = np.empty((self.Nimages,
+                                        f[0].data.shape[0],
+                                        f[0].data.shape[1])) 
+                self.imgshape = (f[0].data.shape[0],
+                                 f[0].data.shape[1])
+
+            self.images[i] = f[0].data
             f.close()
             if i%100==0: print 'Loading images',i
 
-        self.images = np.array(self.images)
+        self.Npix = self.images[0].shape[0] * \
+            self.images[0].shape[1]
+
+    def break_images(self):
+        """
+        Set 'truth'
+        """
+        if self.truedark==None:
+            self.truedark = np.zeros(self.imgshape)
+        if self.truesky==None:
+            self.truesky = np.zeros(self.imgshape)
+
+        for i in range(self.images.shape[0]):
+            self.images[i] += self.truesky
+            self.images[i] *= self.trueflat
+            self.images[i] += self.truedark
+
 
     def calibrate_images(self):
         """
@@ -52,121 +144,156 @@ class Calibrator(object):
         """
         # simple initial flat, darks if not given
         if self.flat==None:
+            print 'Initializing flat as ones'
             self.flat = np.ones(self.images[0].shape)
         if self.dark==None:
-            ind = np.random.permutation(len(self.images))
-            ind = ind[:0.1 * ind.shape[0]] # use a tenth for 
-                                           # dark estimation
-            self.dark = np.zeros(self.images[0].shape) + \
-                np.median(self.images[ind])
+            print 'Initializing \'dark\' as zeros'
+            self.dark = np.zeros(self.images[0].shape) 
 
         for i in range(self.images.shape[0]):
             self.images[i] -= self.dark
             self.images[i] /= self.flat
 
+        if self.iters==0:
+            # Save initial flat/dark
+            h = pf.PrimaryHDU(self.flat)
+            h.writeto(self.outbase+'_initflat.fits')
+            h = pf.PrimaryHDU(self.truedark)
+            h.writeto(self.outbase+'_initdark.fits')
+
     def patchify(self):
         """
-        Patch up images, this is slow and 
-        takes about 1.6s per (500x500) field.
+        Make patches from images
         """
-        self.xs = []
-        self.ys = []
-        self.data = []
         for i in range(self.images.shape[0]):
-            d,x,y = self.patchify_one(self.images[i],
-                                      self.patchshape)
-            self.xs.append(x)
-            self.ys.append(y)
-            self.data.append(d)
+            d,ids = self.patchify_one(i,self.images[i])
+            if i==0:
+                Npatches = d.shape[0]
+                self.data = np.zeros((Npatches*self.Nimages,
+                                      d.shape[1]))
+                self.ids = np.zeros(Npatches*self.Nimages,dtype='int')
+
+            self.ids[i*Npatches:(i+1)*Npatches] = ids
+            self.data[i*Npatches:(i+1)*Npatches,:] = d
             if i%100==0: print 'Patchifying',i
-            
-        self.xs = np.concatenate(self.xs)
-        self.ys = np.concatenate(self.ys)
-        self.data = np.concatenate(self.data)
 
-    def patchify_one(self,d,patchshape):
+        assert np.all(self.data[-1,:]!=0.0)
+
+    def patchify_one(self,i,d):
         """
-        Create patches from image
+        Create patches from one image, cut on variance
         """
-        p = Patches(d,np.ones(d.shape),pshape=patchshape,flip=True)
+        patchshape = self.patchshape # kill me now
+        cpx = (self.patchshape[0] * self.patchshape[1] - 1) / 2
+        p = Patches(d,np.ones(d.shape),pshape=patchshape,flip=False)
     
-        var = np.var(p.data,axis=1)
-        var = np.sort(var)
-        thresh = var[0.99 * var.shape[0]] # magic number 0.99 from 
+        # record the indices of the variance cuts once
+        if self.iters==0:
+            var = np.var(p.data,axis=1)
+            v   = np.sort(var)
+            thresh = v[0.99 * v.shape[0]] # magic number 0.99 from 
                                           # inspecting var dist.
-            
-        var = np.var(p.data,axis=1)
-        # get high var patches
-        ind = var>thresh
-        hi  = p.data[ind,:]
-        hxs = p.xs[ind].min(axis=1) + 2
-        hys = p.ys[ind].min(axis=1) + 2
-        # get low var patches
-        ind = var<thresh
-        lo  = p.data[ind,:]
-        lxs = p.xs[ind].min(axis=1) + 2
-        lys = p.ys[ind].min(axis=1) + 2
-        ind = np.random.permutation(lo.shape[0])
-        lo  = lo[ind[:hi.shape[0]],:]
-        lxs = lxs[ind[:hi.shape[0]]]
-        lys = lys[ind[:hi.shape[0]]]
-        
-        outd = np.concatenate((hi,lo))
-        outx = np.concatenate((hxs,lxs))
-        outy = np.concatenate((hys,lys))
+            ind = np.where(var>thresh)[0]
+            if self.hivar:
+                self.img2patch_inds[i] = ind
+            if self.lovar:
+                idx = np.random.shuffle(np.where(var<thresh)[0])
+                idx = idx[:p.data[ind,:].shape[0]]
+                if self.hivar:
+                    self.img2patch_inds[i] = np.append(ind,idx)
+                else:
+                    self.img2patch_inds[i] = idx
 
-        return outd,outx,outy
 
-    def get_nn(self,test,train,k,target_precision):
+        inds = self.img2patch_inds[i]
+        return p.data[inds,:],p.indices[inds,cpx]
+
+
+    def sort(self):
+        """
+        Sort patches in pixel ID order
+        """
+        ind = np.argsort(self.ids)
+        self.data = self.data[ind]
+        self.ids  = self.ids[ind]
+        self.bins = np.bincount(self.ids)
+
+        coverage = np.zeros(self.imgshape).ravel()
+        coverage[:self.ids.max()+1] += self.bins
+        h = pf.PrimaryHDU(coverage.reshape(self.imgshape))
+        h.writeto(self.outbase+'_coverage_'+str(self.iters)+'.fits')
+
+    def nns(self):
+        """
+        Use flann to calculate kNNs
+        """
+        cpx = (self.patchshape[0] * self.patchshape[1] - 1) / 2
+        vals = self.data[:,cpx]
+        foo = np.append(np.arange(cpx, dtype=int),
+                        np.arange(cpx, dtype=int) + cpx + 1)
+        data = self.data[:,foo]
 
         flann = FLANN()
-        parms = flann.build_index(train,target_precision=target_precision,
+        parms = flann.build_index(data,target_precision=self.nn_precision,
                                   log_level='info')
-        return flann.nn_index(test,k,checks=parms['checks'])
 
-    def nn_model(self):
+        inds, dists = flann.nn_index(data,self.k,checks=parms['checks'])
+        self.nn_inds  = inds[:,1:]
+        self.nn_dists = dists[:,1:]
+        self.cpx_vals = vals
+        self.cpx_nns  = vals[self.nn_inds]
+
+    def make_mask(self):
         """
-        Painfully slow!
+        Masking around edges
         """
+        mask = np.ones((np.sqrt(self.Npix),
+                        np.sqrt(self.Npix)),
+                       dtype='int')
+        xpad = (self.patchshape[0]-1)/2
+        ypad = (self.patchshape[1]-1)/2
 
-        self.pred_means = []
-        self.pred_vars  = []
-        self.test_vals  = []
+        mask[:xpad,:] = 0
+        mask[-(xpad+1):,:] = 0
+        mask[:,:ypad] = 0
+        mask[:,-(ypad+1):] = 0
         
-        x,y = np.meshgrid(range(self.images.shape[1]),
-                                    range(self.images.shape[2]))
-        x = x.flatten()
-        y = y.flatten()
+        self.mask = mask.ravel()
 
-        
-        pix = (self.patchshape[0] ** 2 - 1) / 2
-        half = (self.patchshape[0]-1) / 2 + 1
 
-        for i in range(self.images.shape[1]*
-                       self.images.shape[2]):
+    def calibration_step(self):
+        """
+        Calculate the delta dark, flat
+        """
+        self.delta_dark = self.dark.ravel() * 0.0 
+        self.delta_flat = self.flat.ravel() * 0.0 
 
-            ind = (self.xs==x[i]) & (self.ys==y[i])
-            if (self.data[ind].shape[0]>0):
-                test = self.data[ind]
-                vals = test[:,pix]
-                test = np.delete(test,pix,axis=1)
+        curr = 0
+        idx = np.arange(self.ids.max()+1)
+        for i in range(self.bins.shape[0]):
+            if (self.mask[idx[i]]>0) & (self.bins[i]>2):
+                nns = self.cpx_nns[curr: \
+                                   curr+self.bins[i],:]
 
-                ind = ind == False
-                train = self.data[ind]
-                pred = train[:,pix]
-                train = np.delete(train,pix,axis=1)
-                ind, dist = self.get_nn(test,train,
-                                        self.k,self.nn_precision)
+                # these are the inverse variance and mean of
+                # the nns for each patch that hits pix
+                iv = 1. / np.var(nns,axis=1)
+                m = np.mean(nns,axis=1)
+                # the data
+                vals = self.cpx_vals[curr:curr+self.bins[i]]
+                # weighted least squares
+                if self.flatonly:
+                    self.delta_flat[idx[i]] = np.dot(m * iv, vals) / \
+                        np.dot(m * iv, m) - 1.
+                else:
+                    A = np.vstack(np.ones_like(m), m)
+                    ATAinv = np.linalg.inv(np.dot(A * iv, A.T))
+                    ATb = np.dot(A * iv, vals)
+                    rs = np.dot(ATAinv, ATb)
+                    self.delta_dark[idx[i]] = rs[0]
+                    self.delta_flat[idx[i]] = rs[1] - 1
+            if i%(self.Npix/64)==0: 
+                print 'Calibrated pixel %6.0f, %1.2f of total' % \
+                    (i,float(curr)/self.data.shape[0])
+            curr += self.bins[i]
 
-                means = pred[ind].sum(axis=1)/self.k
-                vars = pred[ind].var(axis=1)
-
-            else:
-                vals,means,vars = None, None, None
-
-            self.test_vals.append(vals)
-            self.pred_means.append(means)
-            self.pred_vars.append(vars)
-
-            if i%100==0: print 'NN ',i
-                 
