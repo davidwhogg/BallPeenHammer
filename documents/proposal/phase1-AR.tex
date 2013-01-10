@@ -28,6 +28,11 @@
 \documentclass[12pt]{article}
 \usepackage{phase1}
 
+\newcommand{\project}[1]{\textsl{#1}}
+\newcommand{\HST}{\project{HST}}
+\newcommand{\WFC}{\project{WFC3}}
+\newcommand{\MAST}{\project{MAST}}
+
 \begin{document}
 
 %   1. SCIENTIFIC JUSTIFICATION
@@ -36,6 +41,66 @@
 %
 \justification          % Do not delete this command.
 % Enter your scientific justification here.
+
+Precise calibration of the detector in an astronomical imaging camera
+is not trivial---and it is only harder if it is in space.
+Fundamentally, the sensitivity of the device must be calibrated with
+incident photons; no artificial light source is available; even if an
+artificial source \emph{were} available, it could not be designed to
+illuminate the device exactly as does a star or other astronomical
+source.
+
+The imaging devices of the \HST\ are calibrated by a number of
+methods:
+\\ $\bullet$ \project{laboratory calibration}: The instrument was illuminated
+  in the laboratory pre-flight.  In principle this calibration can be
+  done perfectly, but \textsl{(a)}~usually the calibration
+  illumination does not illuminate the instrument exactly as does an
+  in-flight star observation, and \textsl{(b)}~usually the light
+  source does not have a completely appropriate SED.  The laboratory
+  calibration happens pre-launch, so changes in the instrument through
+  launch and age cannot be captured, nor can some aspects of in-launch
+  environment (loading, temperature, pressure).
+\\ $\bullet$ \project{standard stars}: On a regular schedule, well-understood
+  standard stars are placed in the instrument focal plane to test the
+  on-orbit throughput of the device.  These observations are key to
+  instrument monitoring, but they don't calibrate the device at the
+  pixel level; they provide only overall throughput measurements.
+\\ $\bullet$ \project{grid test}: The throughput measurements are transferred
+  out to the entire device by grid tests, in which standards or a star
+  field are stepped over the instrument focal plane.  This brings the
+  same astronomical source to many different focal-plane positions; it
+  permits relative calibration of different parts of the detector.
+  The grid, however, is not dense at the pixel level.  The grid test
+  does not provide a pixel-to-pixel flat field; it only calibrates the
+  flat on large scales.
+\\ $\bullet$ \project{super-flat}: The only in-flight source of
+  pixel-to-pixel sensitivity information are the photons detected in
+  the sky---the blank parts of the imaging.  These photons can be
+  combined (with masking of detected astronomical sources) into a
+  pixel-level sensitivity map.  Unfortunately, this map is a
+  sensitivity to the \emph{sky} not to a \emph{star}: The sky has a
+  different SED than any star.  More importantly, the
+  uniform-brightness sky illuminates the device differently than any
+  star.  This problem is a bigger problem for open-structure
+  ground-based telescopes than it is for the \HST, but it isn't known
+  to be negligible for \HST.
+
+There is no method, not even any \emph{combination of methods} that
+can be used to test the calibration of the detector in-flight,
+providing information on pixel-to-pixel relative sensitivity (small
+scales), illuminating the detector as stars do, and with the SEDs or
+colors of astronomical sources of interest.  It is possible that these
+things don't matter---that every pixel of every \HST\ instrument is
+properly calibrated---but it is close to impossible to know with the
+calibration data available at present.
+
+\textbf{Here we propose to calibrate the \WFC\ instrument at the pixel
+  level using all of the science data availble in \MAST.}
+Importantly, we will build this calibration from the astronomical
+sources in the data, \emph{not} the blank-sky parts of the imaging.
+By construction, the flats we produce will be built from sources with
+astrophysically relevant SEDs.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   2. ANALYSIS PLAN
