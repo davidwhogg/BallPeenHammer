@@ -32,6 +32,7 @@
 \newcommand{\HST}{\project{HST}}
 \newcommand{\WFC}{\project{WFC3}}
 \newcommand{\MAST}{\project{MAST}}
+\newcommand{\dd}{\mathrm{d}}
 
 \begin{document}
 
@@ -93,7 +94,10 @@ scales), illuminating the detector as stars do, and with the SEDs or
 colors of astronomical sources of interest.  It is possible that these
 things don't matter---that every pixel of every \HST\ instrument is
 properly calibrated---but it is close to impossible to know with the
-calibration data available at present.
+calibration data available at present.  That is, if the flat
+appropriate to stellar sources is different at fine (pixel-level)
+angular scales from the flat appropriate to sky photons, that problem
+would not appear strongly in current calibration data.
 
 \textbf{Here we propose to calibrate the \WFC\ instrument at the pixel
   level using all of the science data availble in \MAST.}
@@ -101,6 +105,58 @@ Importantly, we will build this calibration from the astronomical
 sources in the data, \emph{not} the blank-sky parts of the imaging.
 By construction, the flats we produce will be built from sources with
 astrophysically relevant SEDs.
+
+In general there are two approaches for self-calibration of this kind.
+The first---what we might call ``traditional'' self-calibration---is
+built on the principle that if the \emph{same object} is observed at
+\emph{different focal-plane positions} the inferences made ought to be
+independent of focal-plane position.  This kind of self-calibration is
+most effective when the observatory obeys calibration-oriented
+observing strategies (CITE HOLMES), and those strategies involve
+multiple observations for most sources.  This approach is not
+applicable to most \HST\ instruments, because sources are rarely
+observed multiple times, and when they are it is usually on one of a
+small number of small-angle dithers.
+
+In the second approach---what we might call ``probabilistic''
+self-calibration---the fundamental principle is that no \emph{pixel}
+will see a \emph{special set of astronomical objects}.  (Of course
+this assumption is wrong in important ways, to which we will return
+below.)  This kind of self-calibration is applicable in (almost) any
+observing strategy, provided that the imager has been used to make
+\emph{an enormous number of observations}.
+
+In a probabilistic self-calibration, the idea is that the probability
+distribution function (PDF) for image patches output by any exposure
+in any region of the focal plane ought to match well the PDF in any
+\emph{other} region of the focal plane.  If the calibration parameters
+get set to bad values, the observed image patches will contain
+imprints of the calibration errors, related to the location on the
+focal plane from which they are taken.  The simplest version of
+probabilistic self-calibration is the construction of the
+``super-flat'' in the current \WFC\ calibration strategy; the
+super-flat is constructed by forcing statistics of the pixel values to
+be constant across the device.  The most extreme version of
+probabilistic self-calibration would be to construct highly
+informative prior PDFs for astronomical images and find the
+calibration parameters at which the output images match best those
+priors!  Here we propose to do something intermediate.
+
+...instrument these equations with words...
+\begin{eqnarray}
+p_n &\equiv& p(D_n)
+\\
+\ln L &=& \sum_n \ln p_n
+\\
+p_n &\approx& \frac{1}{N}\,\sum_{n'\neq n} K([D_n - D_{n'}]^2)
+\\
+\frac{\dd p_n}{\dd \theta_j} &=& \frac{1}{N}\,\sum_{n'\neq n} \left[
+  \frac{\dd D_n}{\dd \theta_j}\cdot(D_n - D_{n'})
+ -\frac{\dd D_{n'}}{\dd \theta_j}\cdot(D_n - D_{n'})
+  \right]\,K'([D_n - D_{n'}]^2)
+\end{eqnarray}
+
+...how is the ``no pixel is special'' assumption wrong?..
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   2. ANALYSIS PLAN
