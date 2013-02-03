@@ -166,13 +166,13 @@ patches $D_n$ of calibrated imaging.  Each patch $D_n$ is coming from
 a particular location in the device centered on pixel $m$.  The idea
 behind the probabilistic self-calibration is that when the device is
 properly calibrated (in dark, sky flat, and object flat), every pixel
-$m$ produces the same \emph{distribution} or pdf for patches $D_n$.
-In this formulation, it is possible to think of a total data
-likelihood $L$ that is the product of the pdf for patches evaluated at
-every patch.  As calibration gets better, this distribution will get
-more informative, or more peaked around patches that are possible
-given the astronomical source population (mainly unresolved points)
-and the point-spread function.
+$m$ produces the same \emph{distribution} or pdf $p(D)$ for patches
+$D$.  In this formulation, it is possible to think of a total data
+likelihood $L$ that is the product of the pdf for patches $p(D)$
+evaluated at every observed (calibrated) patch $D_n$.  As calibration
+gets better, this distribution will get more informative, or more
+peaked around patches that are possible given the astronomical source
+population (mainly unresolved points) and the point-spread function.
 
 In equations, the theory is
 \begin{eqnarray}
