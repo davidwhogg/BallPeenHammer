@@ -1,0 +1,64 @@
+\documentclass[12pt,preprint,pdftex]{aastex}
+
+\newcommand{\documentname}{\textsl{Note}}
+\newcommand{\equationname}{equation}
+\newcommand{\foreign}[1]{\textsl{#1}}
+\newcommand{\etal}{\foreign{et\,al.}}
+\newcommand{\project}[1]{\textsl{#1}}
+\newcommand{\given}{\,|\,}
+\newcommand{\setofall}[1]{\left\{{#1}\right\}}
+\newcommand{\dd}{\mathrm{d}}
+
+\begin{document}\sloppy\sloppypar
+
+\noindent{\ttfamily This document is a draft.  It is Copyright 2012
+  David W. Hogg, Ross Fadely, Rob Fergus, and others.  It is not ready
+  for distribution.}
+
+
+\section{Calibration using 1x2 patches of pixels}
+
+We can up images into $1\times2$ pixel patches, which has the advantage of easy 
+visualization and computation.  For the (fake but realistic) astronomical images we 
+have been analyzing, the distribution of pixel values is characterized by something 
+like the distribution show in Figure \ref{fig:fig1}.  There is a locus of pixels centered on 
+$(0,0)$, these are the parts of the image with no sources.  The fan of pixels with larger 
+(positive) pixel values are two pixel patches which hit an astronomical source.  
+
+In Figure \ref{fig:fig1}, the `True' distribution of values are shown, along with the distribution 
+for the same set of images but with a flatfield error of 0.8 (1.2), alternating in even (odd) 
+columns, respectively.  The point to notice is that the variance perpendicular to the `$y=x$' 
+axis is larger for the data with the flatfield error.
+
+\begin{figure}
+\centering
+ \includegraphics[clip=true, trim=0cm 0cm 0.0cm 0.cm,width=12cm]{/Users/rossfadely/BallPeenHammer/plots/pixelvalues_2d.png}
+\caption{Distribution of pixel values for $(1\time2)$ pixel patches, extracted from simulated images.  The corrupted data has a flatfield error of $\pm20\%$, alternating by column.  Note the larger variance perpendicular to the $y=x$ axis for the corrupt data. This is the distribution from 10 random images.  The thick red line shows the variance cut used below.}
+\label{fig:fig1}
+\end{figure}
+
+A way to quantify the significance of the variance is the asymmetry\footnote{Hogg claims jargon from the world of particle physics.}:
+
+\begin{eqnarray}
+A &=& \frac{x-y}{x+y}
+\end{eqnarray}
+
+\noindent where $x, \,y$ are the first and second pixel values in the patch.  In Figure \ref{fig:fig2} the asymmetry is plotted for the patches in Figure \ref{fig:fig2}, after cutting on the variance (actually total intensity) of the patches (red line, Figure \ref{fig:fig1}.  It is clear that (in this exaggerated case) that the variance of the corrupted distribution is larger than the true distribution.  The same version of Figure \ref{fig:fig2} is shown in Figure \ref{fig:fig3}, for $10\times$ the number of images.
+
+\begin{figure}
+\centering
+ \includegraphics[clip=true, trim=0cm 0cm 0.0cm 0.cm,width=12cm]{/Users/rossfadely/BallPeenHammer/plots/asym.png}
+\caption{Distribution of asymmetry values for the patches shown in Figure \ref{fig:fig1}, but only for high variance sources (red line in the above figure).  The variance for the corrupted data is larger than that of the true distibution.}
+\label{fig:fig2}
+\end{figure}
+
+\begin{figure}
+\centering
+ \includegraphics[clip=true, trim=0cm 0cm 0.0cm 0.cm,width=12cm]{/Users/rossfadely/BallPeenHammer/plots/asym_100.png}
+\caption{Same as Figure \ref{fig:fig2}, but for $10x$ the number of images.}
+\label{fig:fig3}
+\end{figure}
+
+
+\end{document}
+
