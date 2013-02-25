@@ -40,7 +40,8 @@ axis is larger for the data with the flatfield error.
 A way to quantify the significance of the variance is the asymmetry\footnote{Hogg claims jargon from the world of particle physics.}:
 
 \begin{eqnarray}
-A &=& \frac{x-y}{x+y}
+A &=& \frac{x-y}{x+y}\\
+f(\hat{x_k}) &=& \frac{1}{N}\sum^{N}_i\left[\prod_j^{J} h_j^{-1} K\left(\frac{\hat{x_{kj}}-x_{ij}}{h_j}\right)\right]
 \end{eqnarray}
 
 \noindent where $x, \,y$ are the first and second pixel values in the patch.  In Figure \ref{fig:fig2} the asymmetry is plotted for the patches in Figure \ref{fig:fig2}, after cutting on the variance (actually total intensity) of the patches (red line, Figure \ref{fig:fig1}.  It is clear that (in this exaggerated case) that the variance of the corrupted distribution is larger than the true distribution.  The same version of Figure \ref{fig:fig2} is shown in Figure \ref{fig:fig3}, for $10\times$ the number of images.
