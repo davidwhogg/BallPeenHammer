@@ -168,60 +168,27 @@ checklist iii) schedule for data delivery (is this in APT?) iv) what
 docs, data products, and software will we deliver? v) how does this 
 complement ongoing calib efforts?
 
-...define sky flat, object flat, and zero and dark and etc...
+The goal of our archival analysis is to perform probabilistic
+self-calibration of WFC3 IR data.  Such aims can be very broad,
+encompassing a range of calibration problems including static (or slowly 
+evolving) issues (e.g., object and sky flat-fields, ...) or transient
+issues (e.g., persistence, `snow balls', ...).  Since our approach is
+new and some-what exploratory, our analysis plan is to first focus on
+achievable a baseline project, taking advantage of much of the current
+knowledge of WFC3 (e.g., PSF model), and subsequently focusing on
+enhanced-level deliverables.
 
-Fundamentally, our plan is to consider an enormous number $N$ of small
-patches $D_n$ of calibrated imaging.  Each patch $D_n$ is coming from
-a particular location in the device centered on pixel $m$.  The idea
-behind the probabilistic self-calibration is that when the device is
-properly calibrated (in dark, sky flat, and object flat), every pixel
-$m$ produces the same \emph{distribution} or pdf $p(D)$ for patches
-$D$.  In this formulation, it is possible to think of a total data
-likelihood $L$ that is the product of the pdf for patches $p(D)$
-evaluated at every observed (calibrated) patch $D_n$.  As calibration
-gets better, this distribution will get more informative, or more
-peaked around patches that are possible given the astronomical source
-population (mainly unresolved points) and the point-spread function.
+\textbf{Our baseline deliverable is to produce a new, pixel-to-pixel
+  flat-field model for the WFC3 F110W and F160W filters.}\footnote{RF
+  - Is there only one pixel-to-pixel filter derived on the ground? Or
+  one for each filter?  Conceivably, if the former, we could use the existing
+  low-freq. corrections to build up our own pixel-to-pixel filter, but
+  using all the data from all the filters.}\footnote{RF - I think, if
+  we need to produce a pixel-to-pixel flat \emph{per filter}, we need
+  two filters so that Kalirai can do his MS test.} \footnote{RF - In
+  Kalirai's paper the filters they beat on 47 Tuc with are F110W and
+  F160W.}  
 
-In equations, the theory is
-\begin{eqnarray}
-p_n &\equiv& p(D_n)
-\\
-\ln L &=& \sum_n \ln p_n
-\\
-p_n &\approx& \frac{1}{N}\,\sum_{n'\neq n} K([D_n - D_{n'}]^2)
-\\
-\frac{\dd p_n}{\dd \theta_j} &=& \frac{1}{N}\,\sum_{n'\neq n} \left[
-  \frac{\dd D_n}{\dd \theta_j}\cdot(D_n - D_{n'})
- -\frac{\dd D_{n'}}{\dd \theta_j}\cdot(D_n - D_{n'})
-  \right]\,K'([D_n - D_{n'}]^2)
-\quad ,
-\end{eqnarray}
-where $p_n \equiv p(D_n)$ is the pdf for patches evaluated at patch
-$D_n$, this pdf is modeled or approximated as a kernel density
-estimate with kernel $K(\cdot)$, $\theta_j$ is a parameter of the sky
-flat, object flat, or dark, the derivative $\dd p_n / \dd \theta_j$ is
-obtained by chain rule but most of the terms in this sum are precisely
-zero (the system is sparse).  The kernel density estimate (CITE KDE)
-is a data-driven model for a pdf which approximates the probability
-for any paritcular datum $D_n$ with the density of \emph{other} data
-$D_{n'}$ in data space nearby to $D_n$.  That density is obtained by
-smoothing and summing the ``mixture of delta functions'' implied by
-the full data sample.  The sparseness in the derivative calculation
-arises because each pixel calibration parameter only touches the
-(tiny) fraction of patches that touch one particular pixel.
-
-...how is the ``no pixel is special'' assumption wrong?..
-
-...what do we plan to do as our zeroth project and plan?..
-
-...scale:  We need every single WFC3 image and maybe even those won't be enough...
-
-...what is our attitude towards the PSF?  Do we know it?..
-
-...compare flat at high variance and low variance...
-
-...see flat vary with device temperature and star color...
 
 %   3. MANAGEMENT PLAN
 %       (see Section 9.7 of the Call for Proposals)
