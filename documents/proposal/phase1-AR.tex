@@ -171,23 +171,46 @@ complement ongoing calib efforts?
 The goal of our archival analysis is to perform probabilistic
 self-calibration of WFC3 IR data.  Such aims can be very broad,
 encompassing a range of calibration problems including static (or slowly 
-evolving) issues (e.g., object and sky flat-fields, ...) or transient
+evolving) issues (e.g., object and sky flat fields, ...) or transient
 issues (e.g., persistence, `snow balls', ...).  Since our approach is
 new and some-what exploratory, our analysis plan is to first focus on
 achievable a baseline project, taking advantage of much of the current
 knowledge of WFC3 (e.g., PSF model), and subsequently focusing on
 enhanced-level deliverables.
 
-\textbf{Our baseline deliverable is to produce a new, pixel-to-pixel
-  flat-field model for the WFC3 F110W and F160W filters.}\footnote{RF
+\textbf{Our baseline goal is to produce a new, pixel-to-pixel
+  flat field model for the WFC3 F110W and F160W filters.}\footnote{RF
   - Is there only one pixel-to-pixel filter derived on the ground? Or
   one for each filter?  Conceivably, if the former, we could use the existing
   low-freq. corrections to build up our own pixel-to-pixel filter, but
-  using all the data from all the filters.}\footnote{RF - I think, if
+  using all the data from all the filters.} \footnote{RF - I think, if
   we need to produce a pixel-to-pixel flat \emph{per filter}, we need
   two filters so that Kalirai can do his MS test.} \footnote{RF - In
   Kalirai's paper the filters they beat on 47 Tuc with are F110W and
-  F160W.}  
+  F160W.}  Fundamentally, our method relies on the fact that stars
+observed by HST are point sources, convolved by the PSF at the
+location on the detector.  Beyond a simple normalization, therefore,
+all stars ought to look similar if 1) the PSF (as a function of
+time and position) is well understood, and 2) the pixel-to-pixel
+calibration of the instrument is correct.  If, however, a there is a
+pixel level error in the flat field, stars whos flux touches the
+poorly calibrated pixel will look quite different when compared to the
+flux distributions of all the other stars.  To illustrate, Figure
+\ref{}...
+
+More technically, we intend to build a pixel-level, generative model
+for the data, under the best current PSF model for WFC3.  For a given
+filter, we will take all images $M$ and divide them up into patches $D$
+for which $N$ will have significant flux from an astronomical source.
+The likelihood of a particular patch $i$ is 
+\begin{eqnarray}
+\mathcal{L}_i & = & p(D_i|P_{{\bf x},t},F_{{\bf x}})
+\quad ,
+\end{eqnarray}
+where $P_{{\bf x},t}$ is the PSF over the spatial region of the
+detector, at time $t$ (accounting for variations in time, such as
+'breathing').  $F_{{\bf x}}$ is the flat field model, over the patch
+$i$.  For our baseline 
 
 
 %   3. MANAGEMENT PLAN
