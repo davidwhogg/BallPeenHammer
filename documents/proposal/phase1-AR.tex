@@ -210,7 +210,13 @@ The likelihood of a particular patch $i$ is
 where $P_{{\bf x},t}$ is the PSF over the spatial region of the
 detector, at time $t$ (accounting for variations in time, such as
 'breathing').  $F_{{\bf x}}$ is the flat field model, over the patch
-$i$.  For our baseline 
+$i$.  The total likelihood for all the data, therefore is just the
+product of the likelihoods over all patches.  For our baseline
+project, we will assume the best current PSF model for WFC3 (with
+associated uncertainties) and only ask what pixel-to-pixel flat field
+best explains the data.  Doing, in a maximum likelihood sense, amounts
+to optimizing the total likelihood of the patches with respect to the
+flat field.
 
 
 %   3. MANAGEMENT PLAN
