@@ -51,7 +51,7 @@ next-generation projects like \project{JWST}, \project{Euclid}, and
 observing-time pressure on calibration programs: We want as much of
 the data in ``science'' mode as possible.  One paradox of calibration
 programs is that although they incur significant operational overheads
-(especially for pojects like \project{Euclid} performing large
+(especially for projects like \project{Euclid} performing large
 solid-angle surveys with strict cadence requirements), it is
 nonetheless the case the vast majority of the \emph{photons} detected
 by the infrared detectors will be detected in the science frames, not
@@ -73,30 +73,31 @@ artificial source \emph{were} available, it could not be designed to
 illuminate the device exactly as does a star or other astronomical
 source.
 
-The imaging devices of \HST\ are calibrated by a number of
+The imaging devices of \HST\ (and specifically \WFC) are calibrated by a number of
 methods:
 \\ $\bullet$ \project{laboratory calibration}: The instrument was illuminated
-  in the laboratory pre-flight.  In principle this calibration can be
+  in the laboratory pre-flight (ISR WFC3 2008-046).  In principle this calibration can be
   done perfectly, but \textsl{(a)}~usually the calibration
   illumination does not illuminate the instrument exactly as does an
   in-flight star observation, and \textsl{(b)}~usually the light
   source does not have a completely appropriate SED.  The laboratory
   calibration happens pre-launch, so changes in the instrument through
-  launch and age cannot be captured, nor can some aspects of in-launch
+  launch and in flight cannot be captured, nor can some aspects of in-launch
   environment (loading, temperature, pressure).
 \\ $\bullet$ \project{standard stars}: On a regular schedule, well-understood
   standard stars are placed in the instrument focal plane to test the
-  on-orbit throughput of the device.  These observations are key to
-  instrument monitoring, but they don't calibrate the device at the
-  pixel level; they provide only overall throughput measurements.
+  on-orbit throughput of the device (e.g., ISR WFC3 2009-05).  These
+  observations are key to instrument monitoring, but they don't
+  calibrate the device at the pixel level; they provide only overall
+  throughput measurements.
 \\ $\bullet$ \project{grid test}: The throughput measurements are transferred
   out to the entire device by grid tests, in which standards or a star
-  field are stepped over the instrument focal plane.  This brings the
-  same astronomical source to many different focal-plane positions; it
-  permits relative calibration of different parts of the detector.
-  The grid, however, is not dense at the pixel level.  The grid test
-  does not provide a pixel-to-pixel flat field; it only calibrates the
-  flat on large scales.
+  field are stepped over the instrument focal plane (ISR
+  WFC3-2011-11).  This brings the same astronomical source to many
+  different focal-plane positions; it permits relative calibration of
+  different parts of the detector.  The grid, however, is not dense at
+  the pixel level.  The grid test does not provide a pixel-to-pixel
+  flat field; it only calibrates the flat on large scales.
 \\ $\bullet$ \project{super-flat}: The only in-flight source of
   pixel-to-pixel sensitivity information are the photons detected in
   the sky---the blank parts of the imaging.  These photons can be
