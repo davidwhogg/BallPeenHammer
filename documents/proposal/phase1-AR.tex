@@ -26,7 +26,7 @@
 % The template begins here. Please do not modify the font size from 12 point.
 
 \documentclass[12pt]{article}
-\usepackage{phase1,hyperref}
+\usepackage{phase1,hyperref,graphicx,color}
 
 \newcommand{\documentname}{\textsl{AR Proposal}}
 \newcommand{\project}[1]{\textsl{#1}}
@@ -34,6 +34,8 @@
 \newcommand{\WFC}{\project{WFC3}}
 \newcommand{\MAST}{\project{MAST}}
 \newcommand{\dd}{\mathrm{d}}
+
+\newcommand{\bvec}[1]{\textbf{\textit{#1}}}
 
 \begin{document}
 
@@ -203,11 +205,11 @@ and computation.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\textbf{We must include in `analysis plan', section 9.6 in Call -} 
+{\color{red} \textbf{We must include in `analysis plan', section 9.6 in Call -} 
 i) Details of analysis and datasets to be analyzed.  ii) do APT
 checklist iii) schedule for data delivery (is this in APT?) iv) what
 docs, data products, and software will we deliver? v) how does this 
-complement ongoing calib efforts?
+complement ongoing calib efforts?}
 
 The goal of our archival analysis is to perform probabilistic
 self-calibration of WFC3 IR data.  Such aims can be very broad,
@@ -220,11 +222,8 @@ knowledge of WFC3 (e.g., PSF model), and subsequently focusing on
 enhanced-level deliverables.
 
 \textbf{Our baseline goal is to produce a new, pixel-to-pixel
-  flat field model for the WFC3 F110W and F160W filters.} \footnote{RF
-  - I think, if we need to produce a pixel-to-pixel flat \emph{per
-    filter}, we need two filters so that Kalirai can do his MS test.}
-\footnote{RF - In Kalirai's paper the filters they beat on 47 Tuc with
-  are F110W and F160W.}  Fundamentally, our method relies on the fact
+  flat field model for the WFC3 F110W and F160W filters.}
+Fundamentally, our method relies on the fact
 that stars observed by HST are point sources, convolved by the PSF at
 the location on the detector.  Beyond a simple normalization,
 therefore, all stars ought to look similar if 1) the PSF (as a
@@ -232,29 +231,65 @@ function of time and position) is well understood, and 2) the
 pixel-to-pixel calibration of the instrument is correct.  If, however,
 a there is a pixel level error in the flat field, stars whos flux
 touches the poorly calibrated pixel will look quite different when
-compared to the flux distributions of all the other stars.  To
-illustrate, Figure \ref{}...
+compared to the flux distributions of all the other stars.  
 
 More technically, we intend to build a pixel-level, generative model
-for the data, under the best current PSF model for WFC3.  For a given
-filter, we will take all images $M$ and divide them up into patches $D$
-for which $N$ will have significant flux from an astronomical source.
-The likelihood of a particular patch $i$ is 
+for the data, under the best current PSF model for WFC3.  We begin by
+taking all $M$ images for a filter, and dividing up the images into
+small patches $D_n$ ($5 \times 5$ pixels) $N$ of which contain significant
+flux from a source.  Here, our baseline approach assumes everything in
+the \textsl{calwfc3} pipeline to be true, except for the flat field
+which we will infer.  Therefore, the $D_n$ patchs are taken from
+\texttt{flt} files which have had no flat applied.  Our model for the
+patch is 
+
 \begin{eqnarray}
-\mathcal{L}_i & = & p(D_i|P_{{\bf x},t},F_{{\bf x}},{\bf \Theta})
-\quad ,
+D_n & = & F \cdot S_n \otimes \Psi_n + \epsilon_n + H
+\quad .
 \end{eqnarray}
-where $P_{{\bf x},t}$ is the PSF over the spatial region of the
-detector, at time $t$ (accounting for variations in time, such as
-'breathing').  $F_{{\bf x}}$ is the flat field model for the pixels of
-patch $i$, and ${\bf \Theta}$ are fitting parameters (like the flux
-normalization).  The total likelihood
-for all the data, therefore is just the product of the likelihoods
-over all patches.  For our baseline project, we will assume the best
-current PSF model for WFC3 (with associated uncertainties) and only
-ask what pixel-to-pixel flat field best explains the data.  Doing so,
-in a maximum likelihood sense, amounts to optimizing the total
-likelihood of the patches with respect to the flat field.
+
+In short, we model the patch $D_n$ as an underlying astronomical scene
+(flux located at a delta function in space for stars, surface
+brightness distribution for galaxies) convolved with the pixelated
+PSF.  The convolved scene is mulitiplied by the pixelated flat field
+model model, and has additive noise $\epsilon_n$.  Additionally, we
+can image higher order effects $H$ not covered by our flat field and
+\textsl{calwfc3}, like persistence.  For our baseline we will mask or
+ignore such terms, but will return to these issues as enhanced goals
+(see below).  Additionally, our baseline project will assume a PSF
+model across the detector, from observations of bright stars (e.g.,
+\href{http://bit.ly/XFSb1M}{ISR WFC3 2009-37}).  Note the patch $D_n$
+has associated metadata (like time, temperature, and location on the
+detector).  We will use this to identify the correct portion of the
+current flat field model, as well as the correct PSF and noise model
+(since, e.g., the PSF is known to vary over time and location).  
+
+A critical part of this model involves knowing the the underlying
+scene that comprises $S_n$, which can often be quite complicated.  For
+this reason, we plan to restrict the $N$ total patches to those whose
+scenes are well fit by either one or two stars, or a single compact
+galaxy (who is well fit by a S\'{e}rsic profile).  After determining
+the patches to use for calibration, we can determine the flat field
+using standard interference machinary:
+
+\begin{eqnarray}
+p(D_n|F,S_n,\epsilon_n) &=& N(F \cdot S_n \otimes \Psi_n, \epsilon_n^2)
+\\
+p(\bvec{D}|F,{\bf S},{\bf \Psi},{\bf \epsilon}) &=& \prod_n^N
+p(D_n|F,S_n,\epsilon_n) \\
+p(F|\bvec{D},{\bf \epsilon}) & \propto & p(\bvec{D}|F,{\bf S},{\bf \Psi},{\bf
+  \epsilon}) p(F) p({\bf S}) p({\bf \Psi})
+\quad .
+\end{eqnarray}
+
+Here, we treat the likelihood for individual patches as Gaussian, under the
+noise model determined by \textsl{calwfc3} and the total likelihood is
+just the product over all patches. The posterior probability of the
+flat field involves specifying priors over \textsl{(1)} the flat
+field, which we will take to be the \textsl{calwfc3} LP flats with
+known uncertainty, \textsl{(2)} a prior over scenes ${\bf S}$, which
+is specified during our fitting procedure, and \textsl{(3)} the PSF
+which we will assign as mentioned above, but with some uncertainty.
 
 We plan to deliver (for our baseline) the pixel-to-pixel flat
 fields (and software that produces them) for the F110W and F160W
@@ -301,15 +336,13 @@ calibration techniques.
 \budgetnarrative       % Do not delete this command. CALLS the Management Plan header in the Style File (IGNORE the command name of budgetnarrative
 % Enter your management plan here.
 
-\textbf{Section 9.7 of Call says -} Provide a concise, but complete, 
+{\color{red} \textbf{Section 9.7 of Call says -} Provide a concise, but complete, 
 management plan. This plan will be used by the review panels to assess 
 the likely scale of the proposed research program. Proposers should 
 include a schedule of the work required to achieve the scientific
 goals of the program, a description of the roles of the PI, CoIs,
 postdocs, and students who will perform the analysis, and a plan to 
-disseminate the results to the community.  This document can be 8 
-pages long (including figs/tables, past HST usage does not count),
-this section can be 3 pages long.
+disseminate the results to the community. }
 
 Fadely will do this...
 
@@ -332,7 +365,7 @@ We will travel to a few meetings...
 %
 \pasthstusage  % Do not delete this command.
 
-\textbf{This is needed, section 9.8 Call -} List here the program 
+{\color{red} \textbf{This is needed, section 9.8 Call -} List here the program 
 numbers and data status for all accepted GO/AR/SNAP programs of the 
 PI in at least the last four HST Cycles. Include a list of refereed 
 publications resulting from these programs. Calibration Proposals 
@@ -340,7 +373,7 @@ should describe what science will be enabled by the successful
 completion of the program, and how the currently supported core 
 capabilities, their calibrations, and the existing pipeline or data
 reduction software are insufficient to meet the requirements of this 
-type of science.
+type of science.}
 
 
 None of the investigators has an approved \HST\ program in any of the
@@ -349,6 +382,16 @@ analysis and consulting level on the large \project{PHAT} project to
 image the M31 disk.  This program has generated many refereed papers,
 with co-authorship by Hogg only in...  ...Hogg has also been involved
 in MARSHALL PROGRAMS?..
+
+
+\begin{figure}
+\centering
+ \includegraphics[scale=0.35]{pixelvalues_2d.png}
+ \includegraphics[scale=0.35]{asym_100.png}
+\caption{An example of the }
+\label{fig:2D}
+\end{figure}
+
 
 
 % List here the program numbers and data status for all accepted GO/AR/SNAP
