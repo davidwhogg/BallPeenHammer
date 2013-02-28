@@ -240,7 +240,7 @@ small patches $D_n$ ($5 \times 5$ pixels), $N$ of which contain significant
 flux from a source.  Here, our baseline approach assumes everything in
 the \textsl{calwfc3} pipeline to be true, except for the flat field
 which we will infer.  Therefore, the $D_n$ patchs are taken from
-\texttt{flt} files which have had no flat applied.  Our model for the
+\texttt{flt} files which have had no flat applied.  Our model for a
 patch is 
 
 \begin{eqnarray}
@@ -249,9 +249,11 @@ D_n & = & F \cdot S_n \otimes \Psi_n + \epsilon_n + H
 \end{eqnarray}
 
 In short, we model the patch $D_n$ as an underlying astronomical scene
-(flux located at a delta function in space for stars, surface
+$S_n$ (flux located at a delta function in space for stars, surface
 brightness distribution for galaxies) convolved with the pixelated
-PSF.  The convolved scene is mulitiplied by the pixelated flat field
+PSF.  Note that the model for $S_n$ will have a centroid outside the
+patch in the vast majority of patches.  The convolved scene is
+mulitiplied by the pixelated flat field
 model model, and has additive noise $\epsilon_n$.  Additionally, we
 can image higher order effects $H$ not covered by our flat field and
 \textsl{calwfc3}, like persistence.  For our baseline we will mask or
