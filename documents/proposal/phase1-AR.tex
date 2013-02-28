@@ -28,6 +28,7 @@
 \documentclass[12pt]{article}
 \usepackage{phase1}
 
+\newcommand{\documentname}{\textsl{AR Proposal}}
 \newcommand{\project}[1]{\textsl{#1}}
 \newcommand{\HST}{\project{HST}}
 \newcommand{\WFC}{\project{WFC3}}
@@ -41,10 +42,28 @@
 %
 %
 \justification          % Do not delete this command.
-% Enter your scientific justification here.
 
-\textbf{}
-
+With weak lensing surveys, high-redshift galaxy science, and exoplanet
+discovery and characterization, the requirements on imaging
+calibration are becoming extremely severe.  At the same time,
+next-generation projects like \project{JWST}, \project{Euclid}, and
+\project{WFIRST} are being designed with very strong budget and
+observing-time pressure on calibration programs: We want as much of
+the data in ``science'' mode as possible.  One paradox of calibration
+programs is that although they incur significant operational overheads
+(especially for pojects like \project{Euclid} performing large
+solid-angle surveys with strict cadence requirements), it is
+nonetheless the case the vast majority of the \emph{photons} detected
+by the infrared detectors will be detected in the science frames, not
+the calibration frames.  The science frames themselves therefore
+contain enormous stores of information about calibration.  Unlocking
+this information is the goal of the group of methods known as
+\emph{self-calibration}.  In this \documentname, we propose to develop
+a completely new kind of self-calibration that has the potential to
+deliver precise, fine-scale imaging calibration.  We propose to apply
+the new methods to the entire body of \WFC\ IR-channel data available
+in \MAST.  Our deliverables will be new \WFC\ flat-field maps and the
+code that generated them.
 
 Precise calibration of the detector in an astronomical imaging camera
 is not trivial---and it is only harder if it is in space.
@@ -103,8 +122,8 @@ appropriate to stellar sources is different at fine (pixel-level)
 angular scales from the flat appropriate to sky photons, that problem
 would not appear strongly in current calibration data.
 
-\textbf{Here we propose to calibrate \WFC\ at the pixel
-  level using all of the science data availble in \MAST.}
+\textbf{Here we propose to calibrate the \WFC\ IR channel at the pixel
+  level using all of the F110W and F160W science data availble in \MAST.}
 Importantly, we will build this calibration from the astronomical
 sources in the data, \emph{not} the blank-sky parts of the imaging.
 By construction, the flats we produce will be built from sources with
