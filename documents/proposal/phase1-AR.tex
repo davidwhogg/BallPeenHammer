@@ -159,7 +159,7 @@ In the second approach---what we might call ``probabilistic''
 self-calibration---the fundamental principle is that no \emph{pixel}
 will see a \emph{special set of astronomical objects}.  (Of course
 this assumption is wrong in important ways, to which we will return
-below.\footnote{DWH: We must return to these below!})  This kind of
+below.\footnote{\color{red} DWH: We must return to these below!})  This kind of
 self-calibration is applicable in (almost) any observing strategy,
 provided that the imager has been used to make \emph{an large
   number of observations}.
@@ -213,8 +213,8 @@ complement ongoing calib efforts?}
 
 The goal of our archival analysis is to perform probabilistic
 self-calibration of WFC3 IR data.  Such aims can be very broad,
-encompassing a range of calibration problems including static (or slowly 
-evolving) issues (e.g., object and sky flat fields, ...) or transient
+encompassing a range of calibration problems including static or slowly 
+evolving issues (e.g., object and sky flat fields, ...) or transient
 issues (e.g., persistence, `snow balls', ...).  Since our approach is
 new and some-what exploratory, our analysis plan is to first focus on
 achievable a baseline project, taking advantage of much of the current
@@ -244,7 +244,7 @@ which we will infer.  Therefore, the $D_n$ patchs are taken from
 patch is 
 
 \begin{eqnarray}
-D_n & = & F \cdot S_n \otimes \Psi_n + \epsilon_n + H
+D_n & = & F \cdot (S_n \otimes \Psi_n) + \epsilon_n + H
 \quad .
 \end{eqnarray}
 
@@ -275,7 +275,7 @@ the patches to use for calibration, we can determine the flat field
 using standard interference machinary:
 
 \begin{eqnarray}
-p(D_n|F,S_n,\epsilon_n) &=& N(F \cdot S_n \otimes \Psi_n, \epsilon_n^2)
+p(D_n|F,S_n,\epsilon_n) &=& N(F \cdot (S_n \otimes \Psi_n), \epsilon_n^2)
 \\
 p(\bvec{D}|F,{\bf S},{\bf \Psi},{\bf \epsilon}) &=& \prod_n^N
 p(D_n|F,S_n,\epsilon_n) \\
@@ -322,8 +322,10 @@ Euclid).  We therefore view our exploratory archival calibration
 project as a worthwhile step forward towards next-generation
 calibration techniques.
 
-\textbf{We will do stuff beyond our baseline goals...}
-
+The above analysis plan we have described is a very simplified, and
+achievable set of deliverables that will come out of our archival
+research.  However, we intend to explore enhanced project goals which
+will tackle increasingly difficult calibration problems. 
 
 %   3. MANAGEMENT PLAN
 %       (see Section 9.7 of the Call for Proposals)
@@ -406,5 +408,5 @@ in MARSHALL PROGRAMS?..
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \end{document}          % End of proposal. Do not delete this line.
-                        % Everything after this command is ignored.
+                                   % Everything after this command is ignored.
 
