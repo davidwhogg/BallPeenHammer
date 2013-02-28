@@ -26,7 +26,7 @@
 % The template begins here. Please do not modify the font size from 12 point.
 
 \documentclass[12pt]{article}
-\usepackage{phase1}
+\usepackage{phase1,hyperref}
 
 \newcommand{\documentname}{\textsl{AR Proposal}}
 \newcommand{\project}[1]{\textsl{#1}}
@@ -76,7 +76,8 @@ source.
 The imaging devices of \HST\ (and specifically \WFC) are calibrated by a number of
 methods:
 \\ $\bullet$ \project{laboratory calibration}: The instrument was illuminated
-  in the laboratory pre-flight (ISR WFC3 2008-046).  In principle this calibration can be
+  in the laboratory pre-flight (\href{http://bit.ly/Xn8OOH}{ISR WFC3
+    2008-28}).  In principle this calibration can be
   done perfectly, but \textsl{(a)}~usually the calibration
   illumination does not illuminate the instrument exactly as does an
   in-flight star observation, and \textsl{(b)}~usually the light
@@ -86,14 +87,15 @@ methods:
   environment (loading, temperature, pressure).
 \\ $\bullet$ \project{standard stars}: On a regular schedule, well-understood
   standard stars are placed in the instrument focal plane to test the
-  on-orbit throughput of the device (e.g., ISR WFC3 2009-05).  These
+  on-orbit throughput of the device (e.g.,
+  \href{http://bit.ly/Y7wx5v}{ISR WFC3 2009-05}).  These
   observations are key to instrument monitoring, but they don't
   calibrate the device at the pixel level; they provide only overall
   throughput measurements.
 \\ $\bullet$ \project{grid test}: The throughput measurements are transferred
   out to the entire device by grid tests, in which standards or a star
-  field are stepped over the instrument focal plane (e.g., ISR WFC3
-  2009-39).  This brings the same astronomical source to many
+  field are stepped over the instrument focal plane (e.g., \href{http://bit.ly/XFdEYW}{ISR WFC3
+  2009-39}).  This brings the same astronomical source to many
   different focal-plane positions; it permits relative calibration of
   different parts of the detector. The grid, however, is not dense at
   the pixel level.  The grid test does not provide a pixel-to-pixel
@@ -102,7 +104,8 @@ methods:
   pixel-to-pixel sensitivity information are the photons detected in
   the sky---the blank parts of the imaging.  These photons can be
   combined (with masking of detected astronomical sources) into a
-  pixel-level sensitivity map (ISR WFC3-2011-11).  Unfortunately, this
+  pixel-level sensitivity map (\href{http://bit.ly/YJJB2m}{ISR
+    WFC3-2011-11}).  Unfortunately, this
   map is a sensitivity to the \emph{sky} not to a \emph{star}: The sky
   has a different SED than any star.  More importantly, the
   uniform-brightness sky illuminates the device differently than any
@@ -113,7 +116,7 @@ methods:
   in-flight.
 
 There is no method---not even any \emph{combination of methods}---that
-can be used to all of \textsl{(1)}~test the calibration of the
+can be used to do all of \textsl{(1)}~test the calibration of the
 detector in-flight, \textsl{(2)}~provide information on pixel-to-pixel
 relative sensitivity (small scales), \textsl{(3)}~illuminate the
 detector as stars do, and \textsl{(4)}~illuminate with the SED or
@@ -138,17 +141,19 @@ built on the principle that if the \emph{same object} is observed at
 \emph{different focal-plane positions} the inferences made ought to be
 independent of focal-plane position.  This kind of self-calibration is
 most effective when the observatory obeys calibration-oriented
-observing strategies (CITE HOLMES), and those strategies involve
+observing strategies (\href{http://bit.ly/15TAoYy}{Holmes et
+  al. 2012}), and those strategies involve
 multiple observations for most sources.  The simplest kind of
 self-calibration is the ``grid test'' mentioned above.  The most
 ambitious self-calibration was that performed (by the PI and
 collaborators) with the entire point-source catalog of the
-\project{Sloan Digital Sky Survey} (CITE PADMANABHAN).  Traditional
+\project{Sloan Digital Sky Survey}
+(\href{http://bit.ly/12dPkSh}{Padmanabhan et al. 2008}).  Traditional
 self-calibration (beyond the grid test) is not applicable to most
 \HST\ instruments, because sources are rarely observed multiple times,
 and when they are it is usually on one of a small number of
 small-angle dithers.  Good self-calibration requires a large diversity
-of large-angle dithers (CITE HOLMES AGAIN).
+of large-angle dithers (\href{http://bit.ly/15TAoYy}{Holmes et al. 2012}).
 
 In the second approach---what we might call ``probabilistic''
 self-calibration---the fundamental principle is that no \emph{pixel}
@@ -182,6 +187,13 @@ perhaps) at which the output images match best those priors!  Here we
 propose to do something intermediate, much more ambitious and
 informative than the super-flat, but tractable with current \WFC\ data
 and computation.
+
+
+\begin{flushleft} 
+\href{http://bit.ly/15TAoYy}{Holmes, R., et al., 2012, PASP, 124,
+  1219} \newline
+\href{http://bit.ly/12dPkSh}{Padmanabhan, N., et al., 2008, ApJ, 674, 1217}
+\end{flushleft}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   2. ANALYSIS PLAN
