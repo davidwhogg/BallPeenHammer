@@ -416,16 +416,37 @@ involved at a consulting level in the large \project{PHAT} project
 (Dalcanton, PI) to image the M31 disk.  This program has generated
 many refereed papers, with co-authorship by Hogg on one (Weisz et al.,
 2013, \href{http://dx.doi.org/10.1088/0004-637X/762/2/123}{ApJ, 762, 123}).
-% Maybe we dont want figures...  
-%
-%
-%\begin{figure}
-%\centering
-% \includegraphics[scale=0.35]{pixelvalues_2d.png}
-% \includegraphics[scale=0.35]{asym_100.png}
-%\caption{An example of the }
-%\label{fig:2D}
-%\end{figure}
+
+
+\begin{figure}
+\centering
+ \includegraphics[scale=0.75]{toy32.png}
+\caption{A conceptual demonstration of our patch-based,
+  self-calibration method.  The top left panel shows a what a $5\times5$
+  pixel patch might look like for a high signal to noise (S/N $\sim
+  100$) star, after
+  calibration with \textsl{calwfc3} (but with no flat field applied).
+  The star has a sampling and PSF (at 1.6 microns) that matches WFC3
+  (\href{http://bit.ly/XFSb1M}{ISR WFC3 2009-37}).  For this
+  illustration, the sensitivity of all the the pixels is set to 100\%
+  except for the central pixel, whose sensitivity is reduced by 50\%.
+  Next, the top right panel shows what a best-fit model looks like.
+  The bottom left shows the difference between the two, where the
+  central pixel is clearly inferred to be under-sensitive (given the
+  model).  Finally, the bottom right panel show the flat that we would
+  infer for the across the row of the central pixel.  The thick dashed
+  line is what we get using just the source in the other three
+  panels.  The line grey lines are what we get for 32 other stars,
+  which fall on random locations inside (or within a few pixels
+  outside) the patch.  The thick black line shows the combined flat
+  field, inferred from the 32 sources.  While we stress this is a toy
+  model for demonstration (real data is less clean, the PSF is less
+  well known, ... ), we note that our AR Calibration project will have
+  more sources per pixel.  Additionally, this figure is not using
+  important prior information (like LP-flats), which we will have for
+  our actual calibration.}
+\label{fig:2D}
+\end{figure}
 
 
 
