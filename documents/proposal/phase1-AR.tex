@@ -176,7 +176,9 @@ calibrated---must display a (very tiny) scene that \emph{could
   possibly be observed} by \HST.  If the calibration parameters get
 set to bad values, the observed image patches will contain imprints of
 the calibration errors, related to the location on the focal plane
-from which they are taken.  The simplest version of probabilistic
+from which they are taken (see Figure).
+
+The simplest possible version of a probabilistic
 self-calibration is the construction of the ``super-flat'' in the
 current \WFC\ calibration strategy; the super-flat is constructed by
 forcing statistics of the pixel values to be constant across the
@@ -197,12 +199,12 @@ and computation.
 
 The goal of our archival analysis is to perform a probabilistic
 self-calibration of \WFC\ IR-channel data.  There is a huge range of interesting
-and valuable calibration issues to consider, including static or slowly 
-evolving issues, temperature effects, or transient
-issues (e.g., persistence, and the ``snow balls'').  Since our approach is
-new and somewhat exploratory, our analysis plan is to first focus on
+and valuable calibration issues to consider, including the static or slowly 
+evolving flat, SED dependence, temperature effects, or transients
+(e.g., persistence, and the ``snow balls'').  Since our approach is
+new and somewhat exploratory, our Analysis Plan is to first focus on
 a baseline project, taking advantage of much of the current
-knowledge of \WFC\ (e.g., PSF model).  Once the baseline project is understood
+knowledge of \WFC\ (e.g., the PSF model).  Once the baseline project is understood
 and delivered, we will specify and focus on enhanced deliverables.
 
 \textbf{Our baseline goal is to produce a new, pixel-to-pixel
@@ -214,7 +216,7 @@ therefore, all stars ought to look similar if the PSF (as a
 function of time and position) is well understood, and the
 pixel-to-pixel calibration of the instrument is correct.  If, however,
 a there are small errors in the pixel-to-pixel flat field, stars whose flux
-touches the poorly calibrated pixel will look somewhat distorted.
+touches the poorly calibrated pixel will look somewhat distorted (see Figure).
 
 We intend to build a pixel-level, generative model
 for the (entirety of the) \WFC\ IR-channel data, under the best current PSF model.  We begin by
@@ -239,10 +241,10 @@ $S_n$ (flux located at a delta function in space for stars, surface
 brightness distribution for galaxies) convolved with the
 pixel-convolved and pixel-sampled PSF.  Note that the model for $S_n$
 will include sources with centroids outside the patch in a large
-fraction of patches.  The excess $H_n$ includes both lower order
+fraction of patches!  The excess $H_n$ includes both lower order
 effects (like problems with bias and zero contributions) and higher order effects
 (like persistence).  For our baseline we will mask or ignore such
-terms, but will return to these issues as enhanced goals (see below).
+problems, but will return to these issues as enhanced goals (see below).
 Additionally, our baseline project will assume a PSF model across the
 detector, from observations of bright stars (e.g.,
 \href{http://bit.ly/XFSb1M}{ISR WFC3 2009-37}).  Note the patch $D_n$
@@ -252,7 +254,7 @@ current flat field model, as well as the correct PSF and noise model
 (since, e.g., the PSF is known to vary over time and location).
 
 We will adopt standard \HST\ noise models to generate the distribution
-(variance $\sigma_n^2$) for the noise $\epsilon_n$.  In the
+(variance tensor $\sigma_n^2$) for the noise $\epsilon_n$.  In the
 probabilistic approaches we will use, we can drop or ignore bad pixels
 and cosmic rays by simply treating those pixels as having infinite
 variance (or vanishing inverse variance $\sigma_n^{-2}$); these bad
@@ -273,8 +275,8 @@ p(F|\bvec{D},{\bf \epsilon}) & \propto & p(\bvec{D}|F,{\bf S},{\bf \Psi},{\bf
   \sigma})\, p(F)\, p({\bf S})\, p({\bf \Psi})
 \quad .
 \end{eqnarray}
-That is, because we can write down a probability for the data given model
-parameters, we can infer those model parameters either in a maximum-likelihood
+That is---because we can write down a probability for the data given model
+parameters---we can infer those model parameters either in a maximum-likelihood
 sense or in a sample-from-posterior PDF sense.
 Here we have treated the likelihood for individual patches as
 Gaussian, under the noise model determined by \textsl{calwfc3}.  The
@@ -290,16 +292,16 @@ will assign as mentioned above, but with some uncertainty.
 
 We plan to deliver (for our baseline) the pixel-to-pixel flat fields
 (and software that produces them) for the F110W and F160W filters.  We
-are choosing these particular filters since they are amongst the most
+are choosing these particular filters since they are the most
 heavily used with \WFC\ IR-channel observations, having been used for
-1626 and 4149 exposures (respectively, as of 2013-02-27) longer than
+1626 and 4149 exposures respectively (as of 2013-02-27) longer than
 100~s.  In addition, we choose these filters since they provide a set
 of tests with which we can assess the fidelity of our flat fields.
 Specifically, we will first examine the consistency of the photometry
-of standard stars (gridded across the detector).
+of standard stars (gridded across the detector in standard calibration observations).
 
 For end-to-end testing of our delivered flat, Jason
-Kalirai has volunteered to reprocess \WFC\ observations of 47 Tuc (see
+Kalirai (STScI) has volunteered to reprocess \WFC\ observations of 47 Tuc (see
 Kalirai et al. 2012, \href{http://dx.doi.org/10.1088/0004-6256/143/1/11}{AJ, 143, 11}),
 for which we can examine the
 consistency of the Main Sequence of the cluster.  In both cases,
@@ -317,10 +319,10 @@ variation of $-1.5$ to $+1.6\%$ (see ISR WFC3-2011-11).  We view this
 baseline exploratory archival calibration project as a worthwhile step forward
 towards next-generation calibration techniques.
 
-The above analysis plan we have described is a very simplified, and
-achievable set of deliverables that will come out of our archival
-research.  However, we intend to explore enhanced project goals which
-will tackle increasingly difficult calibration problems:
+The above Analysis Plan includes simplified and
+achievable deliverables.
+However, we intend to follow this delivery with enhanced-goal projects that
+attack increasingly difficult calibration problems:
 \\ $\bullet$
 There are projects related to time and temperature: The sensitivity
 of the device is known to be a function of both temperature and time,
@@ -366,12 +368,12 @@ prior on detector location and thereby infer the intentions of
 \budgetnarrative       % Do not delete this command.
 
 Prior to this proposal, our team has spent time developing the some of
-the tools necessary to execute the above analysis, and have tested the
+the tools necessary to execute the above Analysis Plan, and have tested the
 methods on some toy problems.  We propose to to deliver our baseline
 deliverables (flat field and code) within 6 months of beginning the
 project in earnest.  We envision a rough schedule of 1 month of data
 collection/familiarization, in parallel with software development.
-Next, roughly 4-5 months of interation and assessment of the
+Next there will be roughly 4-5 months of interation and assessment of the
 calibration algorithm.  Finally, the last month will involve final
 computations, writing of publications, and software documentation for
 release. Enhanced goals will proceed in the following $\sim6$ months,
@@ -395,7 +397,7 @@ record in) open science---the code will be open source, available
 publically on GitHub (as is this proposal, currently, and our
 exploratory and toy-model code).  In addition, we have budgeted funds
 to attend conferences related to \HST, \project{JWST}, \project{LSST},
-\project{WFIRST}, and \project{Euclid}, particularly where discussions
+\project{WFIRST}, or \project{Euclid}, particularly where discussions
 of calibration will be well received.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -441,10 +443,11 @@ many refereed papers, with co-authorship by Hogg on one (Weisz et al.,
   outside) the patch.  The thick black line shows the combined flat
   field, inferred from the 32 sources.  While we stress this is a toy
   model for demonstration (real data is less clean, the PSF is less
-  well known, ... ), we note that our AR Calibration project will have
-  more sources per pixel.  Additionally, this figure is not using
+  well known, and the calibration issues are less severe),
+  we note that our AR Calibration project will have
+  more sources per pixel.  Additionally, this figure is not making use of
   important prior information (like LP-flats), which we will have for
-  our actual calibration.}
+  all the projects proposed here.}
 \label{fig:2D}
 \end{figure}
 
