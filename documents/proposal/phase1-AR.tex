@@ -141,19 +141,19 @@ built on the principle that if the \emph{same object} is observed at
 \emph{different focal-plane positions} the inferences made ought to be
 independent of focal-plane position.  This kind of self-calibration is
 most effective when the observatory obeys calibration-oriented
-observing strategies (\href{http://bit.ly/15TAoYy}{Holmes et
-  al. 2012}), and those strategies involve
-multiple observations for most sources.  The simplest kind of
+observing strategies (Holmes et al., 2012,
+\href{http://bit.ly/15TAoYy}{PASP, 124, 1219}), and those strategies
+involve multiple observations for most sources.  The simplest kind of
 self-calibration is the ``grid test'' mentioned above.  The most
 ambitious self-calibration was that performed (by the PI and
 collaborators) with the entire point-source catalog of the
-\project{Sloan Digital Sky Survey}
-(\href{http://bit.ly/12dPkSh}{Padmanabhan et al. 2008}).  Traditional
+\project{Sloan Digital Sky Survey} (Padmanabhan et al., 2008,
+\href{http://bit.ly/12dPkSh}{ApJ, 674, 1217}).  Traditional
 self-calibration (beyond the grid test) is not applicable to most
 \HST\ instruments, because sources are rarely observed multiple times,
 and when they are it is usually on one of a small number of
 small-angle dithers.  Good self-calibration requires a large diversity
-of large-angle dithers (\href{http://bit.ly/15TAoYy}{Holmes et al. 2012}).
+of large-angle dithers (Holmes et al., op cit.).
 
 In the second approach---what we might call ``probabilistic''
 self-calibration---the fundamental principle is that no \emph{pixel}
@@ -188,16 +188,6 @@ propose to do something intermediate, much more ambitious and
 informative than the super-flat, but tractable with current \WFC\ data
 and computation.
 
-ROSS: IS THIS WHERE THE REFS SHOULD GO?  WE COULD DO THEM IN-TEXT
-INSTEAD?  ALSO WHAT DO WE DO ABOUT REFS IN THE NEXT SECTION?  SORRY
-FOR SHOUTING.
-
-\begin{flushleft} 
-\href{http://bit.ly/15TAoYy}{Holmes, R., et al., 2012, PASP, 124,
-  1219} \newline
-\href{http://bit.ly/12dPkSh}{Padmanabhan, N., et al., 2008, ApJ, 674, 1217}
-\end{flushleft}
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   2. ANALYSIS PLAN
 %       (see Section 9.6 of the Call for Proposals)
@@ -214,121 +204,127 @@ checklist iii) schedule for data delivery (is this in APT?) iv) what
 docs, data products, and software will we deliver? v) how does this 
 complement ongoing calib efforts?}
 
-The goal of our archival analysis is to perform probabilistic
-self-calibration of WFC3 IR data.  Such aims can be very broad,
-encompassing a range of calibration problems including static or slowly 
-evolving issues (e.g., object and sky flat fields, ...) or transient
-issues (e.g., persistence, `snow balls', ...).  Since our approach is
-new and some-what exploratory, our analysis plan is to first focus on
-achievable a baseline project, taking advantage of much of the current
-knowledge of WFC3 (e.g., PSF model), and subsequently focusing on
-enhanced-level deliverables.
+The goal of our archival analysis is to perform a probabilistic
+self-calibration of \WFC\ IR-channel data.  There is a huge range of interesting
+and valuable calibration issues to consider, including static or slowly 
+evolving issues, temperature effects, or transient
+issues (e.g., persistence, and the ``snow balls'').  Since our approach is
+new and somewhat exploratory, our analysis plan is to first focus on
+a baseline project, taking advantage of much of the current
+knowledge of \WFC\ (e.g., PSF model).  Once the baseline project is understood
+and delivered, we will specify and focus on enhanced deliverables.
 
 \textbf{Our baseline goal is to produce a new, pixel-to-pixel
-  flat field model for the WFC3 F110W and F160W filters.}
+  flat field model for the \WFC\ IR channel.}
 Fundamentally, our method relies on the fact
-that stars observed by HST are point sources, convolved by the PSF at
+that many of the sources in the data are stars or compact galaxies, convolved by the PSF at
 the location on the detector.  Beyond a simple normalization,
-therefore, all stars ought to look similar if 1) the PSF (as a
-function of time and position) is well understood, and 2) the
+therefore, all stars ought to look similar if the PSF (as a
+function of time and position) is well understood, and the
 pixel-to-pixel calibration of the instrument is correct.  If, however,
-a there is a pixel level error in the flat field, stars whos flux
-touches the poorly calibrated pixel will look quite different when
-compared to the flux distributions of all the other stars.  
+a there are small errors in the pixel-to-pixel flat field, stars whose flux
+touches the poorly calibrated pixel will look somewhat distorted.
 
-More technically, we intend to build a pixel-level, generative model
-for the data, under the best current PSF model for WFC3.  We begin by
-taking all $M$ images for a filter, and dividing up the images into
-small patches $D_n$ ($5 \times 5$ pixels), $N$ of which contain significant
-flux from a source.  Here, our baseline approach assumes everything in
-the \textsl{calwfc3} pipeline to be true, except for the flat field
-which we will infer.  Therefore, the $D_n$ patchs are taken from
-\texttt{flt} files which have had no flat applied.  Our model for a
-patch is 
+We intend to build a pixel-level, generative model
+for the (entirety of the) \WFC\ IR-channel data, under the best current PSF model.  We begin by
+taking all $M$ images taken through a filter, dividing up the images into
+small patches $D_n$ (baseline will be $5 \times 5$ pixels), $N$ of which contain
+significant flux from one or more astronomical sources.  Here, our baseline approach assumes
+everything in the \textsl{calwfc3} pipeline to be true, except for the
+flat field, which we will infer.  Therefore, the $D_n$ patchs are taken
+from home-made \texttt{flt} files (which are generally calibrated but which have had no flat applied), and for
+which cosmic-ray and bad pixel masks are known.
 
+Our model for patch $D_n$ is
 \begin{eqnarray}
-D_n & = & F \cdot (S_n \otimes \Psi_n) + \epsilon_n + H
-\quad .
+D_n & = & F_n \cdot (S_n \otimes \Psi_n) + \epsilon_n + H_n
+\quad 
 \end{eqnarray}
-
+where $F_n$ is the tiny relevant patch of the flat, $S_n$ is a high-resolution (tiny) image, $\Psi_n$
+is the PSF relevant to the patch, $\epsilon_n$ is a noise
+contribution, and $H_n$ includes everything else we are (for now) ignoring.
 In short, we model the patch $D_n$ as an underlying astronomical scene
 $S_n$ (flux located at a delta function in space for stars, surface
-brightness distribution for galaxies) convolved with the pixelated
-PSF.  Note that the model for $S_n$ will have a centroid outside the
-patch in the vast majority of patches.  The convolved scene is
-mulitiplied by the pixelated flat field
-model model, and has additive noise $\epsilon_n$.  Additionally, we
-can image higher order effects $H$ not covered by our flat field and
-\textsl{calwfc3}, like persistence.  For our baseline we will mask or
-ignore such terms, but will return to these issues as enhanced goals
-(see below).  Additionally, our baseline project will assume a PSF
-model across the detector, from observations of bright stars (e.g.,
+brightness distribution for galaxies) convolved with the
+pixel-convolved and pixel-sampled PSF.  Note that the model for $S_n$
+will include sources with centroids outside the patch in a large
+fraction of patches.  The excess $H_n$ includes both lower order
+effects (like problems with bias and zero contributions) and higher order effects
+(like persistence).  For our baseline we will mask or ignore such
+terms, but will return to these issues as enhanced goals (see below).
+Additionally, our baseline project will assume a PSF model across the
+detector, from observations of bright stars (e.g.,
 \href{http://bit.ly/XFSb1M}{ISR WFC3 2009-37}).  Note the patch $D_n$
 has associated metadata (like time, temperature, and location on the
 detector).  We will use this to identify the correct portion of the
 current flat field model, as well as the correct PSF and noise model
-(since, e.g., the PSF is known to vary over time and location).  
+(since, e.g., the PSF is known to vary over time and location).
 
-A critical part of this model involves knowing the the underlying
-scene that comprises $S_n$, which can often be quite complicated.  For
-this reason, we plan to restrict the $N$ total patches to those whose
-scenes are well fit by either one or two stars, or a single compact
-galaxy (who is well fit by a S\'{e}rsic profile).  After determining
+We will adopt standard \HST\ noise models to generate the distribution
+(variance $\sigma_n^2$) for the noise $\epsilon_n$.  In the
+probabilistic approaches we will use, we can drop or ignore bad pixels
+and cosmic rays by simply treating those pixels as having infinite
+variance (or vanishing inverse variance $\sigma_n^{-2}$); these bad
+pixels end up with zero weight in all operations.
+
+A critical part of this model involves inference of the underlying
+scene $S_n$, which can often be quite complicated.  We plan to start by restricting the $N$ total patches to those whose
+scenes are well fit by a background level plus a small number (say one or two) stars, or a single compact
+galaxy (well fit, say, by a S\'{e}rsic profile).  After determining
 the patches to use for calibration, we can determine the flat field
-using standard interference machinary:
-
+using standard interference machinery:
 \begin{eqnarray}
-p(D_n|F,S_n,\epsilon_n) &=& N(F \cdot (S_n \otimes \Psi_n), \epsilon_n^2)
+p(D_n|F,S_n,\epsilon_n) &=& N(F \cdot (S_n \otimes \Psi_n), \sigma_n^2)
 \\
-p(\bvec{D}|F,{\bf S},{\bf \Psi},{\bf \epsilon}) &=& \prod_n^N
-p(D_n|F,S_n,\epsilon_n) \\
+p(\bvec{D}|F,{\bf S},{\bf \Psi},{\bf \sigma}) &=& \prod_n^N
+p(D_n|F,S_n,\sigma_n) \\
 p(F|\bvec{D},{\bf \epsilon}) & \propto & p(\bvec{D}|F,{\bf S},{\bf \Psi},{\bf
-  \epsilon}) p(F) p({\bf S}) p({\bf \Psi})
+  \sigma}) p(F) p({\bf S}) p({\bf \Psi})
 \quad .
 \end{eqnarray}
-
-Here, we treat the likelihood for individual patches as Gaussian, under the
-noise model determined by \textsl{calwfc3} and the total likelihood is
-just the product over all patches. The posterior probability of the
+Here we have treated the likelihood for individual patches as Gaussian, under the
+noise model determined by \textsl{calwfc3}.  The total likelihood is
+just the product over all patches.  The posterior probability of the
 flat field involves specifying priors over \textsl{(1)} the flat
-field, which we will take to be the \textsl{calwfc3} LP flats with
-known uncertainty, \textsl{(2)} a prior over scenes ${\bf S}$, which
-is specified during our fitting procedure, and \textsl{(3)} the PSF
+field, which we will take (at first) to be a very narrow distribution
+in flat-field space centered on the the \textsl{calwfc3} LP flats, \textsl{(2)} a prior over scenes ${\bf S}$, which
+is specified during our fitting procedure, and \textsl{(3)} the PSF model
 which we will assign as mentioned above, but with some uncertainty.
 
-We plan to deliver (for our baseline) the pixel-to-pixel flat
-fields (and software that produces them) for the F110W and F160W
-filters.  We are choosing these particular filters since they are
-amongst the most heavily used with WFC3 IR observations, having taken
-1626 and 4149 exposures\footnote{As of Feb. 27, 2013.} longer than
-100s, respectively.  In addition, we choose these filters
-since they provide a set of tests with which we can assess the
-fidelity of our flat fields.  Specifically, we will first examine the
-consistency of the photometry of standard stars (gridded across 
-the detector).  Subsequently, Jason Kalirai has volunteered to
-reprocess WFC3 observations of 47 Tuc (see Kalirai et al. 2012), for
-which we can examine the consistency of the Main Sequence of the
-cluster.  In both cases, photometry will be performed on the
-individual dithers, rather than the drizzled images (which may
-introduce scatter, depending on the procedure).  By comparing the
-results from our flat fields to those using standard \emph{calwfc3}
-flats (as well as the flat fields themselves), \emph{we will produce
-  the first verification of the pixel level flat field since the
-  launch of WFC3}.  Beyond this zero-th result from our baseline
-project, we expect we will learn new ways in which the calibration can
-be improved, and may possibly provide an improved calibration of the
-F110W and F160W filters.  Currently, the uncertainty in the flat
-fields are about $0.5\%$, with a peak-to-peak variation of -1.5/1.6\%
-(see ISR WFC3-2011-11).  While this is excellent, it will not deliver
-the $<1\%$ photometry required by upcoming surveys (e.g., WFIRST,
-Euclid).  We therefore view our exploratory archival calibration
-project as a worthwhile step forward towards next-generation
-calibration techniques.
+We plan to deliver (for our baseline) the pixel-to-pixel flat fields
+(and software that produces them) for the F110W and F160W filters.  We
+are choosing these particular filters since they are amongst the most
+heavily used with \WFC\ IR-channel observations, having been used for
+1626 and 4149 exposures (respectively, as of 2013-02-27) longer than
+100~s.  In addition, we choose these filters since they provide a set
+of tests with which we can assess the fidelity of our flat fields.
+Specifically, we will first examine the consistency of the photometry
+of standard stars (gridded across the detector).
+
+For end-to-end testing of our delivered flat, Jason
+Kalirai has volunteered to reprocess \WFC\ observations of 47 Tuc (see
+Kalirai et al. 2012, WHAT REF DETAILS?), for which we can examine the
+consistency of the Main Sequence of the cluster.  In both cases,
+photometry will be performed on the individual dithers, rather than
+the drizzled images (which may introduce scatter, depending on the
+procedure).  By comparing the results from our flat fields to those
+using standard \emph{calwfc3} flats (as well as the flat fields
+themselves), \emph{we will produce the first verification of the pixel
+  level flat field since the launch of \WFC}.  Beyond this zeroth-level
+result from our baseline project, we expect we will learn new ways in
+which the calibration can be improved, and we very much hope to provide a scientifically
+improved calibration of the IR channel through the F110W and F160W filters.  Currently, the
+uncertainty in the flat fields are about $0.5\%$, with a peak-to-peak
+variation of $-1.5$ to $+1.6\%$ (see ISR WFC3-2011-11).  We view this
+baseline exploratory archival calibration project as a worthwhile step forward
+towards next-generation calibration techniques.
 
 The above analysis plan we have described is a very simplified, and
 achievable set of deliverables that will come out of our archival
 research.  However, we intend to explore enhanced project goals which
 will tackle increasingly difficult calibration problems. 
+
+HOGG PUT ENHANCED PROJECTS HERE!!
 
 %   3. MANAGEMENT PLAN
 %       (see Section 9.7 of the Call for Proposals)
