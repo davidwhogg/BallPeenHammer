@@ -279,17 +279,23 @@ p(D_n|F,S_n,\epsilon_n) &=& N(F \cdot (S_n \otimes \Psi_n), \sigma_n^2)
 p(\bvec{D}|F,{\bf S},{\bf \Psi},{\bf \sigma}) &=& \prod_n^N
 p(D_n|F,S_n,\sigma_n) \\
 p(F|\bvec{D},{\bf \epsilon}) & \propto & p(\bvec{D}|F,{\bf S},{\bf \Psi},{\bf
-  \sigma}) p(F) p({\bf S}) p({\bf \Psi})
+  \sigma})\, p(F)\, p({\bf S})\, p({\bf \Psi})
 \quad .
 \end{eqnarray}
-Here we have treated the likelihood for individual patches as Gaussian, under the
-noise model determined by \textsl{calwfc3}.  The total likelihood is
-just the product over all patches.  The posterior probability of the
-flat field involves specifying priors over \textsl{(1)} the flat
-field, which we will take (at first) to be a very narrow distribution
-in flat-field space centered on the the \textsl{calwfc3} LP flats, \textsl{(2)} a prior over scenes ${\bf S}$, which
-is specified during our fitting procedure, and \textsl{(3)} the PSF model
-which we will assign as mentioned above, but with some uncertainty.
+That is, because we can write down a probability for the data given model
+parameters, we can infer those model parameters either in a maximum-likelihood
+sense or in a sample-from-posterior PDF sense.
+Here we have treated the likelihood for individual patches as
+Gaussian, under the noise model determined by \textsl{calwfc3}.  The
+total likelihood is just the product over all patches.  The posterior
+probability of the flat field involves specifying priors over
+\textsl{(1)} the flat field, which we will take (at first) to be a
+very narrow distribution in flat-field space centered on the the
+\textsl{calwfc3} LP flats, \textsl{(2)} a prior over scenes ${\bf S}$,
+which we will start by making power-law distribution of stellar
+brightnesses and unclustered spatial distributions (which are pretty
+good for tiny image patches), and \textsl{(3)} the PSF model which we
+will assign as mentioned above, but with some uncertainty.
 
 We plan to deliver (for our baseline) the pixel-to-pixel flat fields
 (and software that produces them) for the F110W and F160W filters.  We
@@ -322,9 +328,38 @@ towards next-generation calibration techniques.
 The above analysis plan we have described is a very simplified, and
 achievable set of deliverables that will come out of our archival
 research.  However, we intend to explore enhanced project goals which
-will tackle increasingly difficult calibration problems. 
-
-HOGG PUT ENHANCED PROJECTS HERE!!
+will tackle increasingly difficult calibration problems:
+\\ $\bullet$
+There are projects related to time and temperature: The sensitivity
+of the device is known to be a function of both temperature and time,
+with defects and sensitivity changes appearing during the mission.  It
+will be important to see if we can detect these changes.
+\\ $\bullet$
+A key idea in this proposal is that sky and object flats might differ,
+because of illumination differences.  This can be tested with direct
+comparision of the sky-based superflats and the flats we construct.
+It can also be investigated by looking at the dependence of our
+conclusions on the patch sample we use.
+\\ $\bullet$
+IR-channel observations are affected by persistence.  Patches affected
+by persistence can be modeled with a mixture model, mixing the
+PSF-convolved scene with persistent after-images of previous data
+frames.  This modeling will deliver parameters of the persistence
+model and should, in principle, improve the signal-to-noise and
+accuracy of any derived flat.
+\\ $\bullet$
+The prior on scenes $S_n$ can be constructed from things we know about
+star and galaxy counts (and, for galaxies, shapes and sizes).
+However, this prior can be learned from the same data in which we are
+learning the flat.  In addition and related, in \emph{principle} this
+prior depends on detector position, because many observational
+programs have placed sources of interest in very specific detector
+locations.  Because the detailed scene distribution is not expected
+(from our toy experiments) to be strongly correlated with flat
+inferences, we don't expect this to be fatal, but it would be
+interesting and reassuring if we could infer the dependence of the
+prior on detector location and thereby infer the intentions of
+\WFC\ observers!
 
 %   3. MANAGEMENT PLAN
 %       (see Section 9.7 of the Call for Proposals)
