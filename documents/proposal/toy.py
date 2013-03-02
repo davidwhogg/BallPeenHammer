@@ -96,7 +96,7 @@ ax3.imshow(fc-mc,interpolation='nearest',vmax=fc.max()*0.2)
 ax3.set_xticklabels([])
 ax3.set_yticklabels([])
 
-# infer for a bunch of patchs
+# infer flat from a bunch of patchs
 Npatch = 32
 flat = np.zeros(5)
 exps = np.zeros((Npatch,5))
@@ -138,38 +138,3 @@ fig.savefig('toy32.png')
 
 
 
-
-
-"""
-# PSF parms
-fwhm = 1.176
-sig  = fwhm / (2.*np.sqrt(2.*np.log(2.)))
-x0 = (np.random.rand() - 0.5)
-
-# x grids
-xc = np.linspace(-5.,5.,11) 
-xf = np.linspace(-5,5,1000)
-
-# fine psf
-ff = np.exp(-.5*(xf-x0)**2/sig**2.)
-
-# course psf
-fc = np.zeros(xc.shape[0])
-for i in range(xc.shape[0]):
-    ind = (xf>=xc[i]-0.5) & (xf<xc[i]+0.5)
-    fc[i] = np.mean(ff[ind])
-
-
-
-
-ax1 = pl.axes([0.1,0.3,0.85,0.6])
-ax2 = pl.axes([0.1,0.1,0.85,0.2])
-
-ax1.plot(xf,ff)
-ax1.plot(xc,fc,drawstyle='steps-mid')
-ax2.plot(xf,ff)
-ax2.plot(xc,fc,drawstyle='steps-mid')
-pl.xlim(-3,3)
-pl.show()
-
-"""
