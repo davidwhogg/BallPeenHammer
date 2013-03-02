@@ -1,26 +1,34 @@
 import numpy as np
 import matplotlib.pyplot as pl
-import matplotlib.gridspec as gridspec
 
 from scipy.optimize import fmin
 
 np.random.seed(2**4)
 
 def make_center():
+    """
+    random center, somewhere in or just outside the patch
+    """
     x0 = 4*(np.random.rand()-0.5)
     y0 = 4*(np.random.rand()-0.5)
     return x0,y0
 
 def gaussian(f,xg,yg,x0,y0,sig):
-    frac = 0.0
+    """
+    return (double?) gaussian
+    """
+    frac = 0.0 
     scale = 10
     g1 = f * (1-frac) * np.exp(-0.5*((xg-x0)**2.+(yg-y0)**2.)/sig**2.) / np.sqrt(2.*np.pi*sig**2.)
     g2 = f * (frac) * np.exp(-0.5*((xg-x0)**2.+(yg-y0)**2.)/(sig*10)**2.) / np.sqrt(2.*np.pi*(sig*10)**2.)
     return g1+g2
 
 def make_patch(xg,yg,ff,xc,yc):
+    """
+    pixelate the gaussian
+    """
     os = xc.shape
-    xc = xc.ravel() # duh
+    xc = xc.ravel() 
     yc = yc.ravel()
     xg = xg.ravel()
     yg = yg.ravel()
@@ -32,9 +40,11 @@ def make_patch(xg,yg,ff,xc,yc):
     return fc.reshape(os)
 
 def neglnlike(p,fc,xg,yg,xc,yc,sig,err):
+    """
+    Negative log likelihood
+    """
     mf = gaussian(p[0],xg,yg,p[1],p[2],sig)
     mc = make_patch(xg,yg,mf,xc,yc)
-    print np.sum((fc-mc)**2./err**2.)
     return np.sum((fc-mc)**2./err**2.)
 
 
@@ -60,7 +70,7 @@ err = fc * 0.05
 fc += np.random.randn(5,5) * err
 
 # the model
-gss, miter = 0.0, 1
+gss, miter = 0.1, 25
 p0 = [flux*(1.+gss*np.random.randn()),
       x0*(1.+gss*np.random.randn()),
       y0*(1.+gss*np.random.randn())]
@@ -68,15 +78,14 @@ out = fmin(neglnlike,p0,args=(fc,xg,yg,xc,yc,sig,err),maxiter=miter)
 mf = gaussian(out[0],xg,yg,out[1],out[2],sig)
 mc = make_patch(xg,yg,mf,xc,yc)
 
+# start fibure
 fig = pl.figure()
-gs = gridspec.GridSpec(2, 2,width_ratios=[1,1])
 pl.gray()
-#ax1 = fig.add_subplot(221)
-ax1 = pl.axes([0.05,0.525,0.45,0.45])
+ax1 = pl.axes([0.05,0.525,0.45,0.45]) # making by hand since panel
+                                      # four sucks
 ax1.imshow(fc,interpolation='nearest',vmax=fc.max()*0.2)
 ax1.set_xticklabels([])
 ax1.set_yticklabels([])
-#ax2 = fig.add_subplot(222)
 ax2 = pl.axes([0.5,0.525,0.45,0.45])
 ax2.imshow(mc,interpolation='nearest',vmax=fc.max()*0.2)
 ax2.set_xticklabels([])
@@ -87,11 +96,12 @@ ax3.imshow(fc-mc,interpolation='nearest',vmax=fc.max()*0.2)
 ax3.set_xticklabels([])
 ax3.set_yticklabels([])
 
-# do a bunch
+# infer for a bunch of patchs
 Npatch = 32
 flat = np.zeros(5)
 exps = np.zeros((Npatch,5))
 for i in range(Npatch):
+    # making a source
     x0, y0 = make_center()
     flux = 100. * (1+0.1*np.random.randn())
     ff = gaussian(flux,xg,yg,x0,y0,sig)
@@ -99,24 +109,24 @@ for i in range(Npatch):
     fc[2,2] *= 0.5
     err = fc * 0.05
     fc += np.random.randn(5,5) * err
+    # fit it
     p0 = [flux*(1.+gss*np.random.randn()),
           x0*(1.+gss*np.random.randn()),
           y0*(1.+gss*np.random.randn())]
     out = fmin(neglnlike,p0,args=(fc,xg,yg,xc,yc,sig,err),maxiter=miter)
     mf = gaussian(out[0],xg,yg,out[1],out[2],sig)
     mc = make_patch(xg,yg,mf,xc,yc)
+    # the flat
     exps[i,:] = fc[2,:] / mc[2,:]
     flat += fc[2,:] / mc[2,:]
-flat /= Npatch
+flat /= Npatch 
 
 ax4 = pl.axes([0.556,0.025,0.3375,0.45])
-#ax4 = pl.axes()
 for i in range(Npatch):
     pl.plot([-2,-1,0,1,2],exps[i,:],'k',alpha=0.2,drawstyle = 'steps-mid')
 ax4.plot([-2,-1,0,1,2],ratio[2,:],'k--',lw=2,drawstyle = 'steps-mid')
 ax4.plot([-2,-1,0,1,2],flat,'k',lw=2,drawstyle = 'steps-mid')
 ax4.set_xticklabels([])
-#fig.subplots_adjust(hspace=0.2,wspace=0.2)
 fig.savefig('toy32.png')
 
 
