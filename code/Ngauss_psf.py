@@ -19,7 +19,7 @@ def make_subsampled(parms, extent, size):
         y0 = parms[i * 5 + 2]
         vx = parms[i * 5 + 3]
         vy = parms[i * 5 + 4]
-        psf += np.exp(-0.5 * ((xg - x0) ** 2 / vx + (yg - y0) ** 2 / vy))
+        psf += amp * np.exp(-0.5 * ((xg - x0) ** 2 / vx + (yg - y0) ** 2 / vy))
     return psf / psf.sum()
 
 def rebin(a, new_shape):

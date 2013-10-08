@@ -5,7 +5,8 @@ def create_table(dbname, table, Npix=25):
     """
     Create tables in postgres for wfc3ir patches
     """
-    assert table in ['pixels', 'var', 'dq', 'meta', 'header']
+    assert table in ['pixels', 'var', 'dq', 'patch_meta', 
+                     'image_meta']
     command = 'CREATE TABLE IF NOT EXISTS '
 
     colnames = get_table_colnames(table)
@@ -16,12 +17,13 @@ def create_table(dbname, table, Npix=25):
             names += colnames[i] + ' REAL, '
             create = command + table + names[:-2] +')'
 
-    if table == 'meta':
-        create = command + 'meta (id SERIAL, x INT, y INT, ' + \
+    if table == 'patch_meta':
+        create = command + 'patch_meta (id SERIAL, x INT, y INT, ' + \
             'mast_name TEXT)'
 
-    if table == 'header':
-        create = command + 'header (mast_name TEXT, header TEXT)'
+    if table == 'image_meta':
+        create = command + 'image_meta (mast_name TEXT, header TEXT, ' + \
+            'Nsrcs SMALLINT)'
 
     db = psycopg2.connect('dbname=' + dbname)
     cursor = db.cursor()
@@ -39,10 +41,10 @@ def get_table_colnames(table):
         colnames = ['var%d' % i for i in range(25)]
     if table == 'dq':
         colnames = ['dq%d' % i for i in range(25)]
-    if table == 'meta':
+    if table == 'patch_meta':
         colnames = ['x', 'y', 'mast_name']
-    if table == 'header':
-        colnames = ['mast_name', 'header']
+    if table == 'image_meta':
+        colnames = ['mast_name', 'header', 'Nsrcs']
     return colnames
 
 def insert_into_table(table, data):
@@ -70,8 +72,8 @@ if __name__ == '__main__':
     create_table('foo', 'pixels')
     create_table('foo', 'var')
     create_table('foo', 'dq')
-    create_table('foo', 'meta')
-    create_table('foo', 'header')
+    create_table('foo', 'patch_meta')
+    create_table('foo', 'image_meta')
 
     db = psycopg2.connect('dbname=foo')
     cursor = db.cursor()
@@ -112,24 +114,24 @@ if __name__ == '__main__':
     print '\nTable - dq:\n', rows
 
     meta = ['235', '675', '\'llsbous39\'']
-    insert_into_table('meta', meta)
+    insert_into_table('patch_meta', meta)
 
     db = psycopg2.connect('dbname=foo')
     cursor = db.cursor()
-    cursor.execute("""SELECT * from meta""")
+    cursor.execute("""SELECT * from patch_meta""")
 
     rows = cursor.fetchall()
-    print '\nTable - meta:\n', rows
+    print '\nTable - patch_meta:\n', rows
 
-    header = ['\'llsbous39\'', '\'this will be the header info in json\'']
-    insert_into_table('header', header)
+    meta = ['\'llsbous39\'', '\'this will be the header info in json\'', '204']
+    insert_into_table('image_meta', meta)
 
     db = psycopg2.connect('dbname=foo')
     cursor = db.cursor()
-    cursor.execute("""SELECT * from header""")
+    cursor.execute("""SELECT * from image_meta""")
 
     rows = cursor.fetchall()
-    print '\nTable - header:\n', rows
+    print '\nTable - image_meta:\n', rows
 
     db.close()
     os.system('dropdb foo')
