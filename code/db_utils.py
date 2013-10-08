@@ -19,7 +19,7 @@ def create_table(dbname, table, Npix=25):
 
     if table == 'patch_meta':
         create = command + 'patch_meta (id SERIAL, x INT, y INT, ' + \
-            'mast_name TEXT)'
+            'peak REAL, mast_name TEXT)'
 
     if table == 'image_meta':
         create = command + 'image_meta (mast_name TEXT, header TEXT, ' + \
@@ -42,7 +42,7 @@ def get_table_colnames(table):
     if table == 'dq':
         colnames = ['dq%d' % i for i in range(25)]
     if table == 'patch_meta':
-        colnames = ['x', 'y', 'mast_name']
+        colnames = ['x', 'y', 'peak', 'mast_name']
     if table == 'image_meta':
         colnames = ['mast_name', 'header', 'Nsrcs']
     return colnames
@@ -113,7 +113,7 @@ if __name__ == '__main__':
     rows = cursor.fetchall()
     print '\nTable - dq:\n', rows
 
-    meta = ['235', '675', '\'llsbous39\'']
+    meta = ['235', '675', '102.23','\'llsbous39\'']
     insert_into_table('patch_meta', meta)
 
     db = psycopg2.connect('dbname=foo')
