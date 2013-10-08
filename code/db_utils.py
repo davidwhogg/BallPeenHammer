@@ -22,7 +22,11 @@ def create_table(dbname, table, Npix=25):
             'peak REAL, mast_name TEXT)'
 
     if table == 'image_meta':
-        create = command + 'image_meta (mast_name TEXT, header TEXT, ' + \
+        create = command + 'image_meta (mast_name TEXT, ' + \
+            'primary_header TEXT, ' + \
+            'SCI_header TEXT, ' + \
+            'ERR_header TEXT, ' + \
+            'DQ_header TEXT, ' + \
             'Nsrcs SMALLINT)'
 
     db = psycopg2.connect('dbname=' + dbname)
@@ -44,7 +48,9 @@ def get_table_colnames(table):
     if table == 'patch_meta':
         colnames = ['x', 'y', 'peak', 'mast_name']
     if table == 'image_meta':
-        colnames = ['mast_name', 'header', 'Nsrcs']
+        colnames = ['mast_name', 'primary_header', 
+                    'SCI_header', 'ERR_header', 'DQ_header', 
+                    'Nsrcs']
     return colnames
 
 def insert_into_table(table, data):
@@ -123,7 +129,12 @@ if __name__ == '__main__':
     rows = cursor.fetchall()
     print '\nTable - patch_meta:\n', rows
 
-    meta = ['\'llsbous39\'', '\'this will be the header info in json\'', '204']
+    meta = ['\'llsbous39\'', 
+            '\'this will be the header info in json\'', 
+            '\'this will be the header info in json\'', 
+            '\'this will be the header info in json\'', 
+            '\'this will be the header info in json\'', 
+            '204']
     insert_into_table('image_meta', meta)
 
     db = psycopg2.connect('dbname=foo')
