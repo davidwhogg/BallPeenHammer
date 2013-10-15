@@ -5,16 +5,20 @@ def create_table(dbname, table, Npix=25):
     """
     Create tables in postgres for wfc3ir patches
     """
-    assert table in ['pixels', 'var', 'dq', 'patch_meta', 
-                     'image_meta']
+    assert table in ['pixels', 'var', 'dq', 'persist',
+                     'patch_meta', 'image_meta']
     command = 'CREATE TABLE IF NOT EXISTS '
 
     colnames = get_table_colnames(table)
 
-    if table in ['pixels', 'var', 'dq']:
+    if table in ['pixels', 'var', 'dq', 'persist']:
+        if table == 'dq':
+            fmt = ' INT, '
+        else:
+            fmt = ' REAL, '
         names = '(id SERIAL, '
         for i in range(Npix):
-            names += colnames[i] + ' REAL, '
+            names += colnames[i] + fmt
             create = command + table + names[:-2] +')'
 
     if table == 'patch_meta':
@@ -45,6 +49,8 @@ def get_table_colnames(table):
         colnames = ['var%d' % i for i in range(25)]
     if table == 'dq':
         colnames = ['dq%d' % i for i in range(25)]
+    if table == 'persist':
+        colnames = ['per%d' % i for i in range(25)]
     if table == 'patch_meta':
         colnames = ['x', 'y', 'peak', 'mast_name']
     if table == 'image_meta':
@@ -53,7 +59,7 @@ def get_table_colnames(table):
                     'Nsrcs']
     return colnames
 
-def insert_into_table(table, data):
+def insert_into_table(table, data, dbname):
     """
     Insert data into table.
     """
@@ -62,7 +68,7 @@ def insert_into_table(table, data):
     insert_head = 'INSERT INTO ' + table + ' (' + \
         string.join(colnames, ',') + ') VALUES ('
     insert = insert_head + string.join(data, ',') + ')'
-    db = psycopg2.connect('dbname=foo')
+    db = psycopg2.connect('dbname=' + dbname)
     cursor = db.cursor()
     cursor.execute(insert)
     db.commit()
@@ -78,6 +84,7 @@ if __name__ == '__main__':
     create_table('foo', 'pixels')
     create_table('foo', 'var')
     create_table('foo', 'dq')
+    create_table('foo', 'persist')
     create_table('foo', 'patch_meta')
     create_table('foo', 'image_meta')
 

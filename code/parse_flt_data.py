@@ -10,15 +10,17 @@ def json_header(header):
     h = {}
     keys = header.keys()
     for i, k in enumerate(keys):
+        if k in ['COMMENT', 'PR_INV_L']:
+            header[i] = ''.join(header[i].split('\''))
         h[k] = header[i]
     return json.dumps(h)
 
-def load_data(flt_filename):
+def load_data(filename):
     """
     Load data, return science data, errors, data quality flags, 
     and a dictionary of json headers.
     """
-    f = pf.open(flt_filename)
+    f = pf.open(filename)
 
     sci = f[1].data
     err = f[2].data
@@ -64,14 +66,26 @@ def get_patches(data, var, dql, centers, patch_size=5):
     """
     Return patched data, etc, at given centers.
     """
+
     x, y = np.meshgrid(range(-(patch_size-1)/2, (patch_size-1)/2 + 1),
                        range(-(patch_size-1)/2, (patch_size-1)/2 + 1))
 
-    xs = (x[None, :, :] + centers[:,0][:, None, None]).astype(np.int)
-    ys = (y[None, :, :] + centers[:,1][:, None, None]).astype(np.int)
+    xcs = (x.ravel()[None, :] + centers[:,0][:, None]).astype(np.int)
+    ycs = (y.ravel()[None, :] + centers[:,1][:, None]).astype(np.int)
 
+    test = data[xcs, ycs]
+    ind = np.argsort(test, axis=1)
+    xshift = x.ravel()[ind[:, -1]]
+    yshift = y.ravel()[ind[:, -1]]
+    ind = np.where((np.abs(xshift) < 2) & (np.abs(yshift) < 2))[0]
+    centers[ind, 0] += xshift[ind]
+    centers[ind, 1] += yshift[ind]
+    centers = centers[ind]
 
-    return data[xs, ys], var[xs, ys], dql[xs, ys]
+    xcs = (x[None, :, :] + centers[:,0][:, None, None]).astype(np.int)
+    ycs = (y[None, :, :] + centers[:,1][:, None, None]).astype(np.int)
+
+    return data[xcs, ycs], var[xcs, ycs], dql[xcs, ycs], xcs, ycs
 
 def make_ds9_regions(centers):
     """
@@ -88,6 +102,9 @@ def make_ds9_regions(centers):
     reg.close()
 
 def write_fits(patches, filename):
+    """
+    Write a fits file with patches at different hdus.
+    """
     hdus = [pf.PrimaryHDU(np.array([0]))]
     for j in range(patches.shape[0]):
         hdus.append(pf.ImageHDU(patches[j]))
