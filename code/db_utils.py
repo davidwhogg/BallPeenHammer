@@ -15,7 +15,7 @@ def create_table(dbname, table, Npix=25):
         if table == 'dq':
             fmt = ' INT, '
         else:
-            fmt = ' REAL, '
+            fmt = ' DOUBLE PRECISION, '
         names = '(id SERIAL, '
         for i in range(Npix):
             names += colnames[i] + fmt
@@ -23,14 +23,11 @@ def create_table(dbname, table, Npix=25):
 
     if table == 'patch_meta':
         create = command + 'patch_meta (id SERIAL, x INT, y INT, ' + \
-            'peak REAL, mast_name TEXT)'
+            'peak DOUBLE PRECISION, mast_file TEXT)'
 
     if table == 'image_meta':
-        create = command + 'image_meta (mast_name TEXT, ' + \
-            'primary_header TEXT, ' + \
-            'SCI_header TEXT, ' + \
-            'ERR_header TEXT, ' + \
-            'DQ_header TEXT, ' + \
+        create = command + 'image_meta (mast_file TEXT, ' + \
+            'prop_id INT, ' + \
             'Nsrcs SMALLINT)'
 
     db = psycopg2.connect('dbname=' + dbname)
@@ -52,104 +49,31 @@ def get_table_colnames(table):
     if table == 'persist':
         colnames = ['per%d' % i for i in range(25)]
     if table == 'patch_meta':
-        colnames = ['x', 'y', 'peak', 'mast_name']
+        colnames = ['x', 'y', 'peak', 'mast_file']
     if table == 'image_meta':
-        colnames = ['mast_name', 'primary_header', 
-                    'SCI_header', 'ERR_header', 'DQ_header', 
+        colnames = ['mast_file', 'prop_id', 
                     'Nsrcs']
     return colnames
 
 def insert_into_table(table, data, dbname):
     """
-    Insert data into table.
+    Insert data into table, data is numpy array.
     """
-    colnames = get_table_colnames(table)
+    s = '('
+    for i in range(data.shape[1]):
+        s += '%s,'
+    s = s[:-1] + ')'
 
-    insert_head = 'INSERT INTO ' + table + ' (' + \
-        string.join(colnames, ',') + ') VALUES ('
-    insert = insert_head + string.join(data, ',') + ')'
     db = psycopg2.connect('dbname=' + dbname)
     cursor = db.cursor()
+
+    arg = ','.join(cursor.mogrify(s, x) for x in data)
+
+    colnames = get_table_colnames(table)
+    insert_head = 'INSERT INTO ' + table + ' (' + \
+        string.join(colnames, ',') + ') VALUES '
+    insert = insert_head + arg
+
     cursor.execute(insert)
     db.commit()
     db.close()
-
-if __name__ == '__main__':
-
-    import os
-    import numpy as np
-
-    # example creation and insertion
-    os.system('createdb foo')
-    create_table('foo', 'pixels')
-    create_table('foo', 'var')
-    create_table('foo', 'dq')
-    create_table('foo', 'persist')
-    create_table('foo', 'patch_meta')
-    create_table('foo', 'image_meta')
-
-    db = psycopg2.connect('dbname=foo')
-    cursor = db.cursor()
-    cursor.execute("""SELECT table_name FROM information_schema.tables 
-       WHERE table_schema = 'public'""")
-
-    rows = cursor.fetchall()
-    print '\nTables:\n', rows
-
-    pix = np.random.randn(25).astype(np.str)
-    insert_into_table('pixels', pix)
-
-    db = psycopg2.connect('dbname=foo')
-    cursor = db.cursor()
-    cursor.execute("""SELECT * from pixels""")
-
-    rows = cursor.fetchall()
-    print '\nTable - pixels:\n', rows
-
-    var = (np.random.randn(25) ** 2).astype(np.str)
-    insert_into_table('var', var)
-
-    db = psycopg2.connect('dbname=foo')
-    cursor = db.cursor()
-    cursor.execute("""SELECT * from var""")
-
-    rows = cursor.fetchall()
-    print '\nTable - var:\n', rows
-
-    dq = np.arange(25, dtype=np.int).astype(np.str)
-    insert_into_table('dq', dq)
-
-    db = psycopg2.connect('dbname=foo')
-    cursor = db.cursor()
-    cursor.execute("""SELECT * from dq""")
-
-    rows = cursor.fetchall()
-    print '\nTable - dq:\n', rows
-
-    meta = ['235', '675', '102.23','\'llsbous39\'']
-    insert_into_table('patch_meta', meta)
-
-    db = psycopg2.connect('dbname=foo')
-    cursor = db.cursor()
-    cursor.execute("""SELECT * from patch_meta""")
-
-    rows = cursor.fetchall()
-    print '\nTable - patch_meta:\n', rows
-
-    meta = ['\'llsbous39\'', 
-            '\'this will be the header info in json\'', 
-            '\'this will be the header info in json\'', 
-            '\'this will be the header info in json\'', 
-            '\'this will be the header info in json\'', 
-            '204']
-    insert_into_table('image_meta', meta)
-
-    db = psycopg2.connect('dbname=foo')
-    cursor = db.cursor()
-    cursor.execute("""SELECT * from image_meta""")
-
-    rows = cursor.fetchall()
-    print '\nTable - image_meta:\n', rows
-
-    db.close()
-    os.system('dropdb foo')

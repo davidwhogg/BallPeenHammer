@@ -14,8 +14,8 @@ def setup_cookies():
     # ...and install it globally so it can be used with urlopen.
     urllib2.install_opener(opener)
 
-def get_datasets(datasets, hostname, mastuser, mastpass, 
-                 hostuser, hostpass, datatypes=['FLT']):
+def get_datasets(datasets, mastuser, mastpass, datatypes=['FLT']):
+
     url = 'http://archive.stsci.edu/hst/search.php?action=Search&sci_data_set_name=' + ''.join(datasets)
 
     f = urlopen(url)
@@ -41,11 +41,11 @@ def get_datasets(datasets, hostname, mastuser, mastpass,
     D = dict(PAGE='options',
              archive_username=mastuser,
              archive_password=mastpass,
-             media='sftp',
-             destination_hostname=hostname,
-             destination_directory='.',
-             destination_username=hostuser,
-             destination_password=hostpass,
+             media='host',
+             destination_hostname='',
+             destination_directory='',
+             destination_username='',
+             destination_password='',
              data='calibrated',
              action='Send retrieval request to ST-DADS',
              specific_extension='')
@@ -56,3 +56,4 @@ def get_datasets(datasets, hostname, mastuser, mastpass,
     f = urlopen(url, data)
     txt = f.read()
     open('res2.html','wb').write(txt)
+
