@@ -1,5 +1,6 @@
 import string
 import psycopg2
+import numpy as np
 
 def create_table(dbname, table, Npix=25):
     """
@@ -77,3 +78,37 @@ def insert_into_table(table, data, dbname):
     cursor.execute(insert)
     db.commit()
     db.close()
+
+def get_data(xmin, xmax, ymin, ymax):
+
+    # data to grab, other than patch_meta
+    keys = ['pixels', 'dq', 'var', 'persist']
+
+    # connect
+    db = psycopg2.connect('dbname=f160w')
+    cr = db.cursor()
+    data = {}
+
+    # need patch_meta to get positions'
+    cmd = 'SELECT * FROM patch_meta ' + \
+        'WHERE patch_meta.y >= %d AND patch_meta.y <= %d AND ' + \
+        'patch_meta.x >= %d AND patch_meta.x <= %d'
+    cr.execute(cmd % (ymin, ymax, xmin, xmax))
+
+    data['patch_meta'] = np.array(cr.fetchall())
+
+    for i in range(len(keys)):
+        # get data via id
+        cmd = 'SELECT * FROM ' + keys[i] + \
+            ' WHERE id = any(array['
+        cmd += ','.join(data['patch_meta'][:, 0]) + '])'
+        cr.execute(cmd) 
+        
+        # sort along ids, eliminate id column
+        tmp = np.array(cr.fetchall()).astype(np.float)
+        ind = np.argsort(tmp[:, 0])
+        data[keys[i]] = tmp[ind, 1:]
+
+    db.close()
+
+    return data

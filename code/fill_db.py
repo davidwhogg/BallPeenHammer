@@ -35,15 +35,24 @@ for i in range(N):
         d = np.loadtxt('out.cat')
     
         # limit data to unblended stars, within bounds
-        ind = (d[:, 1] < 99) & (d[:, -1] > 0.8) & \
-            (d[:, 5] > 3) & (d[:, 5] < 1011) & \
-            (d[:, 6] > 3) & (d[:, 6] < 1011) & \
-            (d[:, 9] == 0)
+        try:
+            ind = (d[:, 1] < 99) & (d[:, -1] > 0.8) & \
+                (d[:, 5] > 3) & (d[:, 5] < 1011) & \
+                (d[:, 6] > 3) & (d[:, 6] < 1011) & \
+                (d[:, 9] == 0)
+        except:
+            continue
         d = d[ind]
+
+        if d.size == 0:
+            continue
 
         # patchify
         pd, pv, pq, xs, ys = get_patches(sci, err**2, dql, d[:, [6, 5]] - 1)
         peaks = pd[:, 2, 2]
+
+        if pd.shape[0] < 1:
+            continue
 
         # magic number to limit number of faint sources recorded
         ind = (peaks > 25. * np.median(sci))
