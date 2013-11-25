@@ -1,0 +1,39 @@
+% This file is part of the BallPeenHammer project.
+% Copyright 2013 the authors.
+
+\documentclass[12pt,letterpaper,preprint]{aastex}
+
+\newcommand{\instrument}[1]{\textsl{#1}}
+\newcommand{\HST}{\instrument{HST}}
+\newcommand{\WFC}{\instrument{WFC3}}
+
+\begin{document}
+
+\title{The \HST\ \WFC\ IR-channel point-spread function}
+\author{Ross Fadely \& David W. Hogg}
+
+\begin{abstract}
+Accurate point-source photometry and astrometry depends on an accurate model of the point-spread function (PSF).
+The publicly available models for the PSF in the \HST\ \WFC\ IR-channel instrument are not accurate.
+Here we construct an empirical model of this PSF,
+  using archival observations of compact sources taken with the instrument.
+Our model is of the \emph{pixel-convolved} PSF;
+  it is a model for the PSF as it appears in the pixel read-outs of the instrument
+  as a function of the sub-pixel position of the source.
+We build our model for the XXX, YYY, and ZZZ bandpasses;
+  the PSF in other bandpasses can be interpolated from these.
+The variation of the PSF with position in the focal plane
+  is apparent in the model.
+We don't explicitly model the dependence of the PSF on source color,
+  but we show that there are effects evident in the data.
+All the code is released under an open-source license
+  and all the results are presented in machine-readable form.
+\end{abstract}
+
+\keywords{
+  method:statistical
+}
+
+Hello World.
+
+\end{document}
