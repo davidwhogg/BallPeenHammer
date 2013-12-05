@@ -89,8 +89,6 @@ def fit_known_psf_and_shift(data, shifts, ini_flat, xc,
             new_flat[xp + xc[i], yp + yc[i]] += (data[i] / m) * \
                 flat[xp + xc[i], yp + yc[i]]
             new_tse += se.sum()
-            if np.mod(i, 100) == 0:
-                print i
 
         new_flat /= norm
         new_flat *= new_flat.size / new_flat.sum()
