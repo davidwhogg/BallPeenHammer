@@ -1,8 +1,9 @@
 import numpy as np
 
 from scipy.special import erf
+from scipy.interpolate import RectBivariateSpline
 
-def psf_pixel(parms, extent):
+def get_gaussian_psf_pixel(parms, extent):
     """
     Return the pixel of a pixel-convolved PSF model using gaussians.
     
@@ -26,6 +27,24 @@ def psf_pixel(parms, extent):
     assert N == 1., 'amplitudes of gaussians dont sum to one.'
     return pval
 
+def render_psfs(psf_model, shifts, data_shape, xpsf, ypsf):
+    """
+    Make psfs under current model.
+    """
+    interp_func = RectBivariateSpline(xpsf, ypsf, psf_model)
+    psfs = np.zeros(data_shape)
+
+    # patch shape is odd, should be checked elsewhere...
+    dx = data_shape[0] - 1
+    dy = data_shape[0] - 1
+    x = np.arange(-dx, dx, data_shape[0]).astype(np.int)
+    y = np.arange(-dy, dy, data_shape[1]).astype(np.int)
+
+    for i in range(psfs.shape[0]):
+        psfs[i] = interp_func(x + shifts[i, 0], y + shifts[i, 1])
+
+    return psfs
+
 def make_patch(parms, shift, shape):
     """
     Make a patch from the PSF model.
@@ -48,11 +67,14 @@ def make_patch(parms, shift, shape):
     patch = np.zeros_like(xlower)
     for i in range(xlower.size):
         extent = (xlower[i], xupper[i], ylower[i], yupper[i])
-        patch[i] = psf_pixel(parms, extent)
+        patch[i] = get_gaussian_psf_pixel(parms, extent)
 
     return patch.reshape(shape)
 
 def draw_fluxes(N, fluxrange, index=2):
+    """
+    Draw fluxes from a power law.
+    """
     r = np.random.rand(N)
     na = 1. - index
     L = fluxrange[0]
@@ -61,7 +83,10 @@ def draw_fluxes(N, fluxrange, index=2):
 
 def render_data(N, parms, fluxrange, size=500, shape=(5, 5),
                 err_level=0.02):
-
+    """
+    Given number of patchs, gaussian psf parameters, and flux range 
+    render fake data.
+    """
     shifts = np.zeros((N, 2))
     fluxes = draw_fluxes(N, fluxrange)
     patches = np.zeros((N, shape[0], shape[1]))
@@ -78,8 +103,12 @@ def render_data(N, parms, fluxrange, size=500, shape=(5, 5),
 
     return patches, shifts, fluxes
 
-def make_initial_model(Nsamp, psize, parms):
-
+def make_initial_gaussian_psf(Nsamp, psize, parms):
+    """
+    Make a pixel-convolved psf model sampled by Nsamp 
+    in each direction, given patch size and gaussian 
+    parameters.
+    """
     model = np.zeros(Nsamp ** 2)
     
     rng = (psize) / 2.
@@ -91,7 +120,7 @@ def make_initial_model(Nsamp, psize, parms):
     for i in range(model.size):
         extent = (xs[i] - 0.5, xs[i] + 0.5,
                   ys[i] - 0.5, ys[i] + 0.5)
-        model[i] = psf_pixel(parms, extent)
+        model[i] = get_gaussian_psf_pixel(parms, extent)
              
     xs = xs.reshape(Nsamp, Nsamp)
     ys = ys.reshape(Nsamp, Nsamp)
