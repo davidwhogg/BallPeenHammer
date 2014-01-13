@@ -1,4 +1,4 @@
-all: md_bph.pdf mofa_bph.pdf flatfield.pdf variance_min.pdf
+all: bph.pdf mofa_bph.pdf flatfield.pdf variance_min.pdf ms.pdf
 
 %.pdf: %.tex
 	pdflatex $<

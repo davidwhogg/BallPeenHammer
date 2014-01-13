@@ -1,0 +1,126 @@
+\documentclass[12pt,preprint,pdftex]{aastex}
+
+\newcommand{\documentname}{\textsl{Note}}
+\newcommand{\equationname}{equation}
+\newcommand{\foreign}[1]{\textsl{#1}}
+\newcommand{\etal}{\foreign{et\,al.}}
+\newcommand{\project}[1]{\textsl{#1}}
+\newcommand{\given}{\,|\,}
+\newcommand{\setofall}[1]{\left\{{#1}\right\}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\vc}[1]{\mathbf{#1}}
+\newcommand{\transpose}[1]{{#1}^{\!{\mathsf{T}}}}
+\newcommand{\flt}{\texttt{flt}}
+\newcommand{\se}{\texttt{SExtractor}}
+
+\begin{document}\sloppy\sloppypar
+
+\noindent{\ttfamily This document is a draft.  It is Copyright 2013
+  David W. Hogg, Ross Fadely, Rob Fergus, and others.  It is not ready
+  for distribution.}
+
+\section{Introduction}
+
+
+
+\section{Calibration using pixel-convolved psfs}
+
+\subsection{Model}
+
+Our flatfield calibration model relies on the fact that stars look very similar across the 
+WFC3 detector, over the lifetime of observations.  Indeed, the WFC3 PSF is very stable --
+spatial and temporal variations of the PSF are known to be slowly varying relative to 
+the pixel scale and between observations (AK, others).  Due to this fact, we can model 
+an observation of a star as a scaled PSF, whose deviations from the model are due to 
+errors in the current flatfield.
+
+While an excellent approximation to the true PSF, it is known that TinyTim models for the 
+PSF are insufficient for accurate data reconstruction (cites).  For our case, this is particularly 
+true since we are looking to improve upon the current WFC3 flatfield which is estimated to 
+be accurate to the $\sim1\%$ level.   For these reasons, we deem it necessary to 
+allow for a very flexible PSF model that can be learned from the data.  Our PSF model is 
+nearly identical to that used to generate ACS `empirical' PSFs in \citet{AK}.  That is, we 
+have a 2D grid of values that define the value of the pixel-convolved PSF for any given 
+pixel, as a function of the $x$ and $y$ positions relative to the centroid of the star.  In Figure 
+\ref{fig:psfdemo} we show how a PSF model for a patch of data is generated from our 2D 
+pixel-convolved PSF model.
+
+Our simple model for a star in the F160W data is 
+
+\begin{eqnarray}
+M_i = A_i P_i + B_i
+\quad , 
+\label{eqn:model-noflat}
+\end{eqnarray}
+
+\noindent where $M_i$ is the model of  a $5\time5$ patch of the pixel values for star $i$, with the patch 
+centered on the brightest pixel.  $A_i$ is a scalar amplitude which we fit for, under the model 
+for the PSF $P_i$ at the inferred location of the star's centroid.  Since the patch may contain flux from 
+large gradients or nearby sources in the image, we also allow a simple background model 
+$B_i = b_i + m_{x, i} \vc{x} + m_{y, i} \vc{y}$.  That is, we consider a background flux model 
+which is a additive scalar $b_i$ and a 2D linear gradient.  
+
+The model described by Equation \ref{eqn:model-noflat} would be the appropriate model for 
+`well calibrated' data, where we believe a corrections do to flat-fielding, bias, etc. are assumed 
+to be correct.  Here, our goal is to improve on the current best estimate of the flat-field by modeling 
+the flat-field for a patch as a multiplicative set of pixel values, $F_i$.  Therefore for our purposes 
+the model for data patch $D_i$ is 
+\begin{eqnarray}
+M_i = F_i (A_i P_i + B_i)
+\quad .
+\label{eqn:model-noflat}
+\end{eqnarray}
+
+\subsection{Data and Modeling Considerations}
+
+There are many practical considerations which need to be addressed before we can solve 
+for the flat-field and PSF in WFC2 F160W image patches.  
+
+\begin{enumerate}
+
+\item First, we need to identify patches in 
+the \flt files that contain objects very likely to be stars.  This can be a non-trivial task - as sources 
+in the images become fainter, stars and galaxies tend to become more similar.   To identify stars, 
+we run \se \citep{Bertin} and the examine measured quantities versus the visual 
+appearance of the sources.  We find that using a criterion that the `stellarity' index is greater 0.8, 
+along with a requirement that the peak brightness is greater than 25 times the median pixel 
+brightness, seems to indicate sources which appear very pointlike: the selected sources are 
+unmistakably round, concentrated, and in almost all cases exhibit a faint Airy ring (which lies at 
+radii outside our 5 pixel patches).  These are horribly ill justified heuristics, but none-the-less 
+seem to suit our purposes.  We have also considered using difference between the peak 
+brightness and auto-iron magnitudes produced by \se, as they have been should to 
+easily distinguish stars and galaxies in high quality HST data.  We find that for the fainter, lower 
+signal to noise sources such a clear division using this criterion is not always possible.  We 
+recognize that our heuristic source classification can lead some galaxies falling into our sample, 
+we attempt to lessen the effect of such sources using a crude outlier model (see Section \ref{sec:opt} 
+below.  Finally, we note that we do not consider sources denoted as blends by \se.  In all, our 
+selection criteria yield $\sim1.8$ million patches of point-like sources.
+
+\item We consider the data in the calibrated \flt images to be of vary high quality.  Bias and flat-field 
+corrects provided by the STScI pipeline is very close the correct calibration of the data.  We 
+therefore assume that \emph{all} calibrations applied to the \flt images are correct, except for the 
+flat-field which we aim to improve upon.  We carefully note data quality flags in the \flt files, and 
+generally do not use pixels flagged as bad or worrisome by the pipeline.  
+
+\item Persistence is known to be an issue for long exposures or for places where bright sources 
+hit the detector.  We have downloaded all the persistence model images from 
+MAST\footnote{http://archive.stsci.edu/prepds/persist/search.php} which are applicable to our 
+images.  For a given patch, we select the corresponding patch in the persistence image, subtract 
+it from the data, and add (when used) the persistence value in quadrature to nominal flux 
+uncertainty estimate.
+
+\item (NOTE) if we do full detector, we punt on the edges.
+\item (NOTE) what do we do about chromaticity
+
+\end{enumerate}
+
+\subsection{Optimization}
+
+- how do we proceed?
+- what is the outlier model, if any?
+- convergence?
+- why SQE instead of $\chi^2$?
+- initialization?
+
+\end{document}
+
