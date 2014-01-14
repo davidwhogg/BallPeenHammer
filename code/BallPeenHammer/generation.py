@@ -33,15 +33,17 @@ def render_psfs(psf_model, shifts, data_shape, xpsf, ypsf):
     """
     interp_func = RectBivariateSpline(xpsf, ypsf, psf_model)
     psfs = np.zeros(data_shape)
+    patch_shape = (data_shape[1], data_shape[2])
 
     # patch shape is odd, should be checked elsewhere...
-    dx = data_shape[0] - 1
-    dy = data_shape[0] - 1
-    x = np.arange(-dx, dx, data_shape[0]).astype(np.int)
-    y = np.arange(-dy, dy, data_shape[1]).astype(np.int)
+    dx = (patch_shape[0] - 1) / 2.
+    dy = (patch_shape[1] - 1) / 2.
+    x = np.linspace(-dx, dx, patch_shape[0])
+    y = np.linspace(-dy, dy, patch_shape[1])
 
+    # NOTE - transpose of interp eval.
     for i in range(psfs.shape[0]):
-        psfs[i] = interp_func(x + shifts[i, 0], y + shifts[i, 1])
+        psfs[i] = interp_func(x + shifts[i, 0], y + shifts[i, 1]).T
 
     return psfs
 
