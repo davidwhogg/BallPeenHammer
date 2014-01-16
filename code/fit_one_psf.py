@@ -23,7 +23,7 @@ data = data.reshape(dq.shape[0], patch_shape[0], patch_shape[1])
 
 # initialize to tinytim
 f = pf.open('../psfs/tinytim-pixelconvolved-507-507.fits') # shape (41, 41)
-ini_psf = f[0].data.T
+ini_psf = f[0].data
 f.close()
 
 # random patch centers (actual not needed if not fitting flat)
@@ -49,7 +49,9 @@ yp, xp = np.meshgrid(np.linspace(-ysize, ysize,
                                   data.shape[1]).astype(np.int))
 patch_grid = (xp, yp)
 
+#dq *= 0.
+
 ini_flat = np.ones((detector_size, detector_size))
-PatchFitter(data, ini_psf, ini_flat, patch_grid, psf_grid,
-            patch_centers, background='linear', sequence=['shifts'],
-            ini_shifts=np.zeros((data.shape[0], 2)))
+PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
+            patch_centers, background='constant', sequence=['shifts'],
+            ini_shifts=np.zeros((data.shape[0], 2)), threads=8)

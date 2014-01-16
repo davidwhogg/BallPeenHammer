@@ -3,12 +3,12 @@ import numpy as np
 
 from .generation import render_psfs
 
-from scipy.optimize import fmin_bfgs
+from scipy.optimize import fmin_bfgs, fmin_l_bfgs_b, fmin_tnc, fmin
 
-def PatchFitter(data, ini_psf, ini_flat, patch_grid, psf_grid,
+def PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
                 patch_centers, background='linear',
                 sequence=['shifts', 'flat', 'psf'], tol=1.e-4, eps=1.e-2,
-                ini_shifts=None):
+                ini_shifts=None, threads=1):
     """
     Patch fitting routines for BallPeenHammer.
     """
@@ -25,13 +25,13 @@ def PatchFitter(data, ini_psf, ini_flat, patch_grid, psf_grid,
     while True:
         for kind in sequence:
             if kind == 'shifts':
-                shifts = update_shifts(data, current_flat, current_psf,
-                                       psf_grid, patch_grid, patch_centers,
-                                       shifts, background)
+                shifts, ssqe = update_shifts(data, dq, current_flat, current_psf,
+                                            psf_grid, patch_grid, patch_centers,
+                                            shifts, background, threads)
             if kind == 'psf':
                 current_psf = update_psf(data, current_flat, current_psf, 
                                          psf_grid, patch_grid, patch_centers,
-                                         shifts, background, eps)
+                                         shifts, background, eps, threads)
             if kind == 'flat':
                 current_flat, counts, sqe = update_flat(data, current_flat,
                                                         rendered_psfs,
@@ -46,40 +46,41 @@ def PatchFitter(data, ini_psf, ini_flat, patch_grid, psf_grid,
         
         return current_flat, current_psf
 
-def update_shifts(data, current_flat, current_psf, psf_grid, patch_grid, 
-                  patch_centers, shifts, background, threads=6):
+def update_shifts(data, dq, current_flat, current_psf, psf_grid, patch_grid, 
+                  patch_centers, shifts, background, threads):
     """
     Update the estimate of the subpixel shifts, given current psf and flat.
     """
     xpg, ypg = patch_grid[0], patch_grid[1]
     xpc, ypc = patch_centers[0], patch_centers[1]
 
-    sqe = np.zeros(data.shape[0])
+    ssqe = np.zeros(data.shape[0])
     if threads == 1:
         for i in range(data.shape[0]):
             p0 = shifts[i]
             flat = current_flat[xpg + xpc[i], ypg + ypc[i]]
-            res = fmin_bfgs(shift_loss, p0, full_output=True, disp=False,
-                            args=(current_psf, data[i], flat, psf_grid, 
-                                  background))
+
+            
+            # fmin seems to perform better than fmin_bfgs or fmin_l_bfgs_b
+            res = fmin(shift_loss, p0, full_output=True, disp=False,
+                       args=(current_psf, data[i], dq[i], flat, psf_grid, 
+                             background))
             shifts[i] = res[0]
-            sqe[i] = res[1]
-            print i
+            ssqe[i] = res[1]
     else:
         mapfn = multiprocessing.Pool(threads).map
         argslist = [None] * data.shape[0]
         for i in range(data.shape[0]):
             flat = current_flat[xpg + xpc[i], ypg + ypc[i]]
-            argslist[i] = [shifts[i], current_psf, data[i], flat, psf_grid,
+            argslist[i] = [shifts[i], current_psf, data[i], dq[i], flat, psf_grid,
                            background]
 
         results = list(mapfn(update_single_shift, [args for args in argslist]))
         for i in range(data.shape[0]):
             shifts[i] = results[i][0]
-            sqe[i] = results[i][1]
-    print sqe
-    print sqe.sum()
-    assert 0
+            ssqe[i] = results[i][1]
+
+    return shifts, ssqe
 
 def update_single_shift(*args):
     """
@@ -89,39 +90,49 @@ def update_single_shift(*args):
     p0 = args[0]
     current_psf = args[1]
     datum = args[2]
-    flat = args[3]
-    psf_grid = args[4]
-    background = args[5]
-    res = fmin_bfgs(shift_loss, p0, full_output=True, disp=False,
-                    args=(current_psf, datum, flat, psf_grid, 
-                          background))
+    dq = args[3]
+    flat = args[4]
+    psf_grid = args[5]
+    background = args[6]
+    bounds = [(-0.5, 0.5), (-0.5, 0.5)]
+
+    # fmin seems to perform better than fmin_bfgs or fmin_l_bfgs_b
+    res = fmin(shift_loss, p0, full_output=True, disp=False,
+               args=(current_psf, datum, dq, flat, psf_grid, 
+                     background))
     return res
 
-def shift_loss(shift, psf_model, data, flat, psf_grid, background):
+def shift_loss(shift, psf_model, data, dq, flat, psf_grid, background):
     """
     Evaluate the shift for a given patch.
     """
+    # Horrible hack for minimizers w/o bounds
+    if (np.abs(shift[0]) > 0.5) | (np.abs(shift[1]) > 0.5):
+        return 1.e10
+
     shape = (1, data.shape[0], data.shape[1])
     psf = render_psfs(psf_model, np.array([shift]), shape, psf_grid[0],
                       psf_grid[1])
+    ind = dq == 0
     flux, bkg_parms, bkg = fit_single_patch(data.ravel(),
                                             psf.ravel(),
                                             flat.ravel(),
+                                            ind.ravel(),
                                             background)
-    model = flat * (flux * psf + bkg.reshape(data.shape))
-    sqe = np.sum((data - model) ** 2.)
-    return sqe    
+    model = flat * (flux * psf[0] + bkg.reshape(data.shape))
+    ssqe = np.sum((data[ind] - model[ind]) ** 2. / model[ind] ** 2.)
+    return ssqe    
 
 def update_psf(data, current_flat, current_psf, psf_grid, patch_grid, 
                patch_centers, shifts, background, eps):
     """
     Update the psf model, using bfgs.
     """
+    assert 0, 'Update: multiprocessing, dq'
     p0 = current_psf.ravel().copy()
-    return fmin_bfgs(psf_loss, p0, args=(data, current_flat, psf_grid, 
-                                         patch_grid, patch_centers, 
-                                         shifts, background, eps),
-                     maxiter=1)
+    return fmin_bfgs(psf_loss, p0, 
+                     args=(data, current_flat, psf_grid, patch_grid, patch_centers, 
+                           shifts, background, eps))
 
 
 def psf_loss(psf_model, data, current_flat, psf_grid, patch_grid,
@@ -166,6 +177,7 @@ def update_flat(data, current_flat, rendered_psfs, patch_grid,
     """
     Update the flat field given current psf model
     """
+    assert 0, 'Update: multithreading, dq'
     if rendered_psfs is None:
         assert shifts is not None
         assert psf_grid is not None
@@ -209,7 +221,7 @@ def update_flat(data, current_flat, rendered_psfs, patch_grid,
         else:
             return new_flat, norm, new_tse
 
-def fit_single_patch(data, psf, flat, background):
+def fit_single_patch(data, psf, flat, ind, background):
     """
     Fit a single patch, return the scale for the psf plus any
     background parameters.  Takes in flattened values for
@@ -229,12 +241,16 @@ def fit_single_patch(data, psf, flat, background):
     else:
         assert False, 'Background model not supported: %s' % background
 
-    rh = np.dot(A.T, data)
-    lh = np.linalg.inv(np.dot(A.T, A))
-    parms = np.dot(lh, rh)
+    # fit the data using least squares
+    rh = np.dot(A[ind, :].T, data[ind])
+    try:
+        lh = np.linalg.inv(np.dot(A[ind, :].T, A[ind, :]))
+        parms = np.dot(lh, rh)
+    except:
+        parms = np.zeros(A.shape[1])
+
+    # make background model
     bkg = np.zeros_like(data)
-
-
     if background is not None:
         for i in range(A.shape[1] - 1):
             bkg += A[:, i + 1] * parms[i + 1]
