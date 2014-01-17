@@ -14,7 +14,8 @@ try:
 except:
     data_dict = get_data(xn, xx, yn, yx)
     data = data_dict['pixels'] - data_dict['persist']
-    np.savetxt('../data/dq_%d_%d_%d_%d.dat' % (xn, xx, yn, yx), data_dict['dq'])
+    dq = data_dict['dq']
+    np.savetxt('../data/dq_%d_%d_%d_%d.dat' % (xn, xx, yn, yx), dq)
     np.savetxt('../data/data_%d_%d_%d_%d.dat' % (xn, xx, yn, yx), data)
 
 patch_shape = (5, 5)
@@ -49,9 +50,15 @@ yp, xp = np.meshgrid(np.linspace(-ysize, ysize,
                                   data.shape[1]).astype(np.int))
 patch_grid = (xp, yp)
 
-#dq *= 0.
-
+s = ['shifts', 'psf']
 ini_flat = np.ones((detector_size, detector_size))
-PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
-            patch_centers, background='constant', sequence=['shifts'],
-            ini_shifts=np.zeros((data.shape[0], 2)), threads=8)
+fname = '../output/5x5psf_%d_%d_%d_%d.dat' % (xn, xx, yn, yx)
+
+import time
+t = time.time()
+flat, psf, shifts = PatchFitter(data, dq, ini_psf, ini_flat, patch_grid,
+                                psf_grid, patch_centers, background='constant',
+                                sequence=s, threads=8, maxiter=1,
+                                ini_shifts=np.zeros((data.shape[0], 2)),
+                                dumpfilebase=fname)
+print time.time() - t
