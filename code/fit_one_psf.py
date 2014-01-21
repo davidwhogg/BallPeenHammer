@@ -22,6 +22,17 @@ patch_shape = (5, 5)
 dq = dq.reshape(dq.shape[0], patch_shape[0], patch_shape[1])
 data = data.reshape(dq.shape[0], patch_shape[0], patch_shape[1])
 
+# get rid of useless patchs
+minpixels = 18
+ind = []
+for i in range(data.shape[0]):
+    test = dq[i] == 0
+    if np.sum(test) >= minpixels:
+        ind.append(i)
+
+dq = dq[ind]
+data = data[ind]
+
 # initialize to tinytim
 f = pf.open('../psfs/tinytim-pixelconvolved-507-507.fits') # shape (41, 41)
 ini_psf = f[0].data
@@ -51,14 +62,16 @@ yp, xp = np.meshgrid(np.linspace(-ysize, ysize,
 patch_grid = (xp, yp)
 
 s = ['shifts', 'psf']
+eps = 1.e0
 ini_flat = np.ones((detector_size, detector_size))
-fname = '../output/5x5psf_%d_%d_%d_%d.dat' % (xn, xx, yn, yx)
+fname = '../output/5x5psf_model_%0.2f_%d_%d_%d_%d' % (np.log10(eps), 
+                                                      xn, xx, yn, yx)
 
 import time
 t = time.time()
 flat, psf, shifts = PatchFitter(data, dq, ini_psf, ini_flat, patch_grid,
                                 psf_grid, patch_centers, background='constant',
-                                sequence=s, threads=8, maxiter=1,
+                                sequence=s, shift_threads=8, maxiter=5, eps=eps,
                                 ini_shifts=np.zeros((data.shape[0], 2)),
-                                dumpfilebase=fname)
+                                dumpfilebase=fname, loss_kind='ssqe-model')
 print time.time() - t
