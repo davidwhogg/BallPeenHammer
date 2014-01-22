@@ -165,7 +165,7 @@ def update_psf(data, dq, current_flat, current_psf, psf_grid, patch_grid,
 
     # get ssqe vector
     ssqe = psf_loss(res, data, dq, current_flat, psf_grid, patch_grid,
-                    patch_centers, shifts, background, eps, threads,
+                    patch_centers, shifts, background, eps, threads, loss_kind,
                     summation=False)
 
     res = np.exp(res.reshape(current_psf.shape[0], current_psf.shape[1]))
