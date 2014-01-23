@@ -335,7 +335,7 @@ def data_loss(data, model, kind):
     """
     Return the specified error/loss/nll.
     """
-    if all(model == 0):
+    if np.all(model == 0):
         sqe = np.Inf
     else:
         sqe = (data - model) ** 2.  
