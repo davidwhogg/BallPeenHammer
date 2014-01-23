@@ -60,7 +60,7 @@ There is nothing difficult in principle about making this prediction or model,
   nor in training it with real imaging of real stars taken with the device.
 What's astonishing is that,
   for the incredibly productive and important \HST\ imaging instruments,
-  this model has never (to our knowledge) been made.
+  this model has never (to our knowledge) been made (soften this?).
 Here we address this by building, testing, and releasing such a model.
 
 There are models of the \emph{optical PSF} of the \HST\ (cite TinyTim, others?);
@@ -99,5 +99,31 @@ It is built with open-source code,
 \section{Method and results}
 
 \section{Discussion}
+
+We perform very well.
+
+We are the only publicly available PSF and software!
+(Maybe here or in an appendix give some example command-line operation.)
+
+It would be good to have more data;
+  what could we do if we did?
+
+The problem is sparse in structure;
+  we could have made much more use of that sparsity to speed things up.
+
+We had various knobs to turn; we set them heuristically.
+What would be better?
+
+We worked in a very knowledge-free way;
+  we could have used our prior knowledge better.
+For instance, we could have started by subtracting out the pixel-convolved fourier transform of the entrance aperture;
+  then we would only have been fitting residuals.
+Even better would be to start with a prior PDF over PSFs;
+  that's a dream.
+
+We only fit the pixel-convolved PSF.
+Once again, why is this a good idea?
+Once again, how should this be used by other users?
+How could one infer the optical PSF from these results?
 
 \end{document}
