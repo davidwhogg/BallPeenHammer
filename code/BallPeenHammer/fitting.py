@@ -10,8 +10,9 @@ from scipy.optimize import fmin_cg, fmin_powell
 def PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
                 patch_centers, background='linear', rendered_psfs=None,
                 sequence=['shifts', 'flat', 'psf'], tol=1.e-4, eps=1.e-4,
-                ini_shifts=None, shift_threads=1, psf_threads=1,
-                maxiter=np.Inf, dumpfilebase=None, loss_kind='ssqe-sum-data'):
+                ini_shifts=None, shift_threads=1, psf_threads=1, floor=None,
+                gain=None, maxiter=np.Inf, dumpfilebase=None,
+                loss_kind='ssqe-sum-data'):
     """
     Patch fitting routines for BallPeenHammer.
     """
@@ -33,7 +34,8 @@ def PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
                 shifts, ssqe = update_shifts(data, dq, current_flat,
                                              current_psf, psf_grid, patch_grid,
                                              patch_centers, shifts, background,
-                                             shift_threads, loss_kind)
+                                             shift_threads, loss_kind, floor, 
+                                             gain)
 
                 print 'Shift step done, ssqe: ', ssqe.sum()
                 if dumpfilebase is not None:
@@ -47,7 +49,8 @@ def PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
                                                current_psf, psf_grid,
                                                patch_grid, patch_centers,
                                                shifts, background, eps,
-                                               psf_threads, loss_kind)
+                                               psf_threads, loss_kind, floor, 
+                                               gain)
 
                 print 'Psf step done, ssqe: ', ssqe.sum()
                 if dumpfilebase is not None:
@@ -58,6 +61,7 @@ def PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
                                ssqe)
 
             if kind == 'flat':
+                assert False, 'need to update to current loss functions'
                 current_flat, counts, ssqe = update_flat(data, current_flat,
                                                          rendered_psfs,
                                                          patch_grid,
@@ -76,7 +80,8 @@ def PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
             tot_ssqe = np.sum(ssqe)
 
 def update_shifts(data, dq, current_flat, current_psf, psf_grid, patch_grid, 
-                  patch_centers, shifts, background, threads, loss_kind):
+                  patch_centers, shifts, background, threads, loss_kind,
+                  floor, gain):
     """
     Update the estimate of the subpixel shifts, given current psf and flat.
     """
@@ -89,7 +94,8 @@ def update_shifts(data, dq, current_flat, current_psf, psf_grid, patch_grid,
             p0 = shifts[i]
             flat = current_flat[xpg + xpc[i], ypg + ypc[i]]
             res = update_single_shift((p0, current_psf, data[i], dq[i], 
-                                       flat, psf_grid, background, loss_kind))
+                                       flat, psf_grid, background, loss_kind,
+                                       floor, gain))
             
             shifts[i] = res[0]
             ssqe[i] = res[1]
@@ -100,7 +106,7 @@ def update_shifts(data, dq, current_flat, current_psf, psf_grid, patch_grid,
         for i in range(data.shape[0]):
             flat = current_flat[xpg + xpc[i], ypg + ypc[i]]
             argslist[i] = [shifts[i], current_psf, data[i], dq[i], flat,
-                           psf_grid, background, loss_kind]
+                           psf_grid, background, loss_kind, floor, gain]
 
         results = list(mapfn(update_single_shift, [args for args in argslist]))
         for i in range(data.shape[0]):
@@ -114,7 +120,7 @@ def update_shifts(data, dq, current_flat, current_psf, psf_grid, patch_grid,
     return shifts, ssqe
 
 def update_single_shift((p0, current_psf, datum, dq, flat, psf_grid,
-                         background, loss_kind)):
+                         background, loss_kind, floor, gain)):
     """
     Update a single shift, enabling multiprocessing
     """
@@ -122,11 +128,11 @@ def update_single_shift((p0, current_psf, datum, dq, flat, psf_grid,
     # need to try fmin_powell
     res = fmin(shift_loss, p0, full_output=True, disp=False,
                args=(current_psf, datum, dq, flat, psf_grid, 
-                     background, loss_kind))
+                     background, loss_kind, floor, gain))
     return res
 
 def shift_loss(shift, psf_model, data, dq, flat, psf_grid, background,
-               loss_kind):
+               loss_kind, floor, gain):
     """
     Evaluate the shift for a given patch.
     """
@@ -138,17 +144,16 @@ def shift_loss(shift, psf_model, data, dq, flat, psf_grid, background,
     psf = render_psfs(psf_model, np.array([shift]), shape, psf_grid[0],
                       psf_grid[1])
     ind = dq == 0
-    flux, bkg_parms, bkg = fit_single_patch((data.ravel(),
-                                            psf.ravel(),
-                                            flat.ravel(),
-                                            ind.ravel(),
-                                            background))
+    flux, bkg_parms, bkg = fit_single_patch((data.ravel(), psf.ravel(),
+                                             flat.ravel(), ind.ravel(),
+                                             background))
     model = flat * (flux * psf[0] + bkg.reshape(data.shape))
-    ssqe = data_loss(data[ind], model[ind], loss_kind)
+    ssqe = data_loss(data[ind], model[ind], loss_kind, floor, gain)
     return np.sum(ssqe)
 
 def update_psf(data, dq, current_flat, current_psf, psf_grid, patch_grid, 
-               patch_centers, shifts, background, eps, threads, loss_kind):
+               patch_centers, shifts, background, eps, threads, loss_kind,
+               floor, gain):
     """
     Update the psf model, using bfgs.
     """
@@ -157,23 +162,23 @@ def update_psf(data, dq, current_flat, current_psf, psf_grid, patch_grid,
 
     p0 = np.log(current_psf.ravel().copy())
 
-    # powell seems to be the most stable, just do one iteration
+    # powell is most efficient w/o gradients, just do one iteration
     res = fmin_powell(psf_loss, p0, maxiter=1,
                       args=(data, dq, current_flat, psf_grid, patch_grid,
                             patch_centers, shifts, background, eps, threads,
-                            loss_kind))
+                            loss_kind, floor, gain))
 
     # get ssqe vector
     ssqe = psf_loss(res, data, dq, current_flat, psf_grid, patch_grid,
                     patch_centers, shifts, background, eps, threads, loss_kind,
-                    summation=False)
+                    floor, gain, summation=False)
 
     res = np.exp(res.reshape(current_psf.shape[0], current_psf.shape[1]))
     return res, ssqe
 
 def psf_loss(psf_model, data, dq, current_flat, psf_grid, patch_grid,
              patch_centers, shifts, background, eps, threads, loss_kind, 
-             summation=True):
+             floor, gain, summation=True):
     """
     Evaluate the current psf model, given a flat and shifts.
     """
@@ -197,12 +202,11 @@ def psf_loss(psf_model, data, dq, current_flat, psf_grid, patch_grid,
             psf = rendered_psfs[i]
             flat = current_flat[xpg + xpc[i], ypg + ypc[i]]
             flux, bkg_parms, bkg = fit_single_patch((data[i].ravel(),
-                                                     psf.ravel(),
-                                                     flat.ravel(),
-                                                     ind.ravel(),
-                                                     background))
+                                                     psf.ravel(), flat.ravel(),
+                                                     ind.ravel(), background))
             model = flat * (flux * psf + bkg.reshape(patch_shape))
-            ssqe[i] = np.sum(data_loss(data[i, ind], model[ind], loss_kind))
+            ssqe[i] = np.sum(data_loss(data[i, ind], model[ind], loss_kind,
+                                       floor, gain))
     else:
         pool = multiprocessing.Pool(threads)
         mapfn = pool.map
@@ -223,7 +227,8 @@ def psf_loss(psf_model, data, dq, current_flat, psf_grid, patch_grid,
             bkg_parms = results[i][1]
             bkg = results[i][2]
             model = flat * (flux * psf + bkg.reshape(patch_shape))
-            ssqe[i] = np.sum(data_loss(data[i, ind], model[ind], loss_kind))
+            ssqe[i] = np.sum(data_loss(data[i, ind], model[ind], loss_kind,
+                                       floor, gain))
 
         pool.close()
         pool.terminate()
@@ -231,13 +236,11 @@ def psf_loss(psf_model, data, dq, current_flat, psf_grid, patch_grid,
 
     if summation:
         # regularization
-        sqg = psf_model[:, 1:] - psf_model[:, :-1]
-        sqg = np.append(sqg, psf_model[1:, :] - psf_model[:-1, :])
-        sqg = sqg ** 2.
-        reg = np.sum(eps * sqg)
+        grd = np.gradient(psf_model)
+        reg = eps * np.sum(grd[0] ** 2.) + eps * np.sum(grd[1] ** 2.)
 
         if np.mod(count, 50) == 0:
-            print count, 'SQE = %0.6f, REG = %0.6f' % (ssqe.sum(), reg)
+            print count, 'SSQE = %0.6f, REG = %0.6f' % (ssqe.sum(), reg)
         count += 1
 
         return np.sum(ssqe) + reg
@@ -250,7 +253,7 @@ def update_flat(data, current_flat, rendered_psfs, patch_grid,
     """
     Update the flat field given current psf model
     """
-    assert 0, 'Update: multithreading, dq'
+    assert 0, 'Update: multithreading, dq, dataloss'
     if rendered_psfs is None:
         assert shifts is not None
         assert psf_grid is not None
@@ -274,8 +277,7 @@ def update_flat(data, current_flat, rendered_psfs, patch_grid,
             psf = rendered_psfs[i]
             flat = current_flat[xpg + xpc[i], ypg + ypc[i]]
             flux, bkg_parms, bkg = fit_single_patch((data[i].ravel(),
-                                                    psf.ravel(),
-                                                    flat.ravel(),
+                                                    psf.ravel(), flat.ravel(),
                                                     background))
             model = flat * (flux * psf + bkg.reshape(patch_shape))
             se = (data[i] - model) ** 2.
@@ -331,7 +333,7 @@ def fit_single_patch((data, psf, flat, ind, background)):
     else:
         return parms[0], None, bkg
 
-def data_loss(data, model, kind):
+def data_loss(data, model, kind, floor, gain, var=None):
     """
     Return the specified error/loss/nll.
     """
@@ -350,4 +352,12 @@ def data_loss(data, model, kind):
         ssqe = sqe / np.sum(data) ** 2.
     if kind == 'ssqe-sum-model':
         ssqe = sqe / np.sum(model) ** 2.
+    if kind == 'nll-model':
+        var = floor + gain * np.abs(model)
+        if np.any(var == 0):
+            print floor, gain, var
+            print model
+            print data
+            assert 0
+        ssqe = 0.5 * (np.log(var) + sqe / var)
     return ssqe

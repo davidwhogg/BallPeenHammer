@@ -64,8 +64,8 @@ patch_grid = (xp, yp)
 s = ['shifts', 'psf']
 eps = 1.e0
 ini_flat = np.ones((detector_size, detector_size))
-fname = '../output/5x5psf_model_%0.2f_%d_%d_%d_%d' % (np.log10(eps), 
-                                                         xn, xx, yn, yx)
+fname = '../output/5x5psf_nll-model2_%0.2f_%d_%d_%d_%d' % (np.log10(eps), 
+                                                          xn, xx, yn, yx)
 
 import time
 t = time.time()
@@ -73,5 +73,6 @@ flat, psf, shifts = PatchFitter(data, dq, ini_psf, ini_flat, patch_grid,
                                 psf_grid, patch_centers, background='constant',
                                 sequence=s, shift_threads=8, maxiter=5, eps=eps,
                                 ini_shifts=np.zeros((data.shape[0], 2)),
-                                dumpfilebase=fname, loss_kind='ssqe-model')
+                                dumpfilebase=fname, loss_kind='nll-model',
+                                floor=0.05, gain=0.01)
 print time.time() - t
