@@ -152,6 +152,11 @@ when the constant $C$ is set to $\ln(2\pi)$.  The second term is a smoothness re
 we take to the gradient at pixel in the pixel-convolved PSF model times a regularization 
 strength $\epsilon$.
 
+The goal of our optimization is to find a very good model for each patch $\model_i$, which should 
+necessitate a good model for the \WFC PSF.  To do so we must solve for $\{x_i, y_i, A_i, \bkg_i\}$ 
+and the pixel-convolved PSF model.  We take an iterative approach to this optimization, relying on  
+a modified Powell optimization algorithm (implemented in \texttt{scipy.optimize.fmin_Powell}). 
+
 \section{Results}
 
 \section{Discussion}
