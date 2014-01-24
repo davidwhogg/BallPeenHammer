@@ -10,7 +10,7 @@
 \newcommand{\dd}{\mathrm{d}}
 \newcommand{\vc}[1]{\mathbf{#1}}
 \newcommand{\transpose}[1]{{#1}^{\!{\mathsf{T}}}}
-\newcommand{\flt}{\texttt{flt}}
+\newcommand{\flt}{\texttt{flt}\,\,}
 \newcommand{\se}{\texttt{SExtractor}}
 
 \begin{document}\sloppy\sloppypar
@@ -18,10 +18,53 @@
 \noindent{\ttfamily This document is a draft.  It is Copyright 2013
   David W. Hogg, Ross Fadely, Rob Fergus, and others.  It is not ready
   for distribution.}
+  
+  \title{Don't waste your time taking flats!}
+\author{
+  Ross~Fadely\altaffilmark{1,2},
+  David~W.~Hogg\altaffilmark{1,3},
+  Rob~Fergus\altaffilmark{4},
+  Curtis McCully\altaffilmark{5}
+}
+\altaffiltext{1}{Center for Cosmology and Particle Physics, Department of Physics, New York University, 4 Washington Place, New York, NY 10003, USA}
+\altaffiltext{2}{To whom correspondence should be addressed.}
+\altaffiltext{3}{Max-Planck-Institut f\"ur Astronomie, K\"onigstuhl 17, D-69117 Heidelberg, Germany}
+\altaffiltext{4}{Department of Computer Science, New York University}
+\altaffiltext{5}{Department of Physics and Astronomy, Rutgers, The State University of New Jersey}
+
+
+\section{abstract}
+Typical astronomical imaging devices measure the intensity field but
+only after multiplication by a non-uniform pixel sensitivity (flat
+field) and offset by a non-uniform zero or dark image (plus noise and
+sometimes nonlinearities).  Measurements of the flat-field and dark
+are usually made with calibration images taken during an observing
+campaign.  When it comes to the flat-field, none of the calibration
+images that can be easily taken illuminate the detector in precisely
+the same way as an astronomical source would.  Here we show that the
+flat-field and dark properties of a detector can be inferred from the
+science data alone, without the use of any calibration data
+whatsoever, provided that the science data set is large and diverse
+enough in its properties.  The method operates by building a
+data-driven ($K$-nearest-neighbors) model of small image patches and
+then adjusting the dark and flat until the statistical properties of
+small pixel patches become uniform across the device.  We demonstrate
+our methods on \project{Sloan Digital Sky Survey} data.
+Computationally, calibration of a device using the science data alone
+is expensive, but it has the great advantage that the device is being
+calibrated with correct illumination, by construction.
 
 \section{Introduction}
 
+Traditional image calibration typically consists of acquiring separate calibration 
+data, additional to the data taken for science.  An important part of this 
+calibration effort is in constructing an understanding of the pixel to pixel sensitivity 
+of the detector.  This data is referred to as a `flat field' image, since division of From the ground, dome and 
+twilight flats are used
 
+\section{Data}
+
+F160W, apertures, exptime? 
 
 \section{Calibration using pixel-convolved psfs}
 

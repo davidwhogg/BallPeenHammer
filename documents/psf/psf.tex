@@ -4,8 +4,15 @@
 \documentclass[12pt,letterpaper,preprint]{aastex}
 
 \newcommand{\instrument}[1]{\textsl{#1}}
+\newcommand{\rf}[1]{\textbf{RF: #1}}
+\newcommand{\vect}[1]{\mathbf{#1}}
 \newcommand{\HST}{\instrument{HST}}
 \newcommand{\WFC}{\instrument{WFC3}}
+\newcommand{\FLT}{\texttt{FLT}\,\,}
+\newcommand{\data}{\vect{D}}
+\newcommand{\model}{\vect{M}}
+\newcommand{\var}{\vect{\sigma}^2}
+\newcommand{\gradients}{\vect{g}}
 
 \begin{document}
 
@@ -63,8 +70,8 @@ What's astonishing is that,
   this model has never (to our knowledge) been made (soften this?).
 Here we address this by building, testing, and releasing such a model.
 
-There are models of the \emph{optical PSF} of the \HST\ (cite TinyTim, others?);
-  these are models of the light field falling on the detector pixels.
+There are models of the \emph{optical PSF} of the \HST\ (cite TinyTim, anderson06);
+  these are models of the light field falling on the detector pixels. \rf{there are WFC3 IR psfs build by Anderson and Dolphin}
 The optical PSF is not directly observed in an image;
   what is observed is the pixel-convolved PSF---%
   the optical PSF integrated over a pixel---%
@@ -96,7 +103,56 @@ It is built with open-source code,
 
 \section{Data}
 
-\section{Method and results}
+\section{Method}
+
+\subsection{Model}
+
+The MAST pipeline delivers an error estimate for each pixel in the \FLT images.   When optimizing 
+our model we would like to use this error in order to calculate quantities like $\chi^2$.  However, 
+there is an issue preventing us from doing so.  For typical astronomical detectors, the variance of 
+the data is estimated as a constant (read noise-like term) plus a scaler times the intensity of the pixel 
+(gain-like term).  This means a noisy pixel will have an under or over estimated uncertainty depending 
+on whether the pixel value is below or above the true value.  This has been shown to be 
+problematic in the PSF fitting of SDSS data (cite Blanton??).  A better model for the uncertainty is 
+instead one which scales with the value of the \emph{model}, since we hope the model value is a 
+closer estimate of the true pixel intensity.  We therefore adopt a noise model for each patch $\data_i$
+as:
+
+\begin{eqnarray}
+\var_i =  \sigma_{r}^2 + g \model_i
+\quad , 
+\label{eqn:model-noflat}
+\end{eqnarray}
+
+\noindent where $\sigma_{r}^2$ is `read noise-like' constant scalar and $g$ is a `gain-like' scalar 
+which is multiplied by the model.  For simplicity, we set each of these parameters to be the same 
+for each data patch.  To set $g$, we took the MAST estimate for the squared error and 
+divided by the pixel values.  We then fit a line to pixels with values between 100 and 
+400 electrons per second, since such pixels are relatively unaffected by read noise.  We find that 
+the slope of this line was consistent with a value of 
+$\sim0.01$, but increased sharply for images with exposure time $\lesssim 200$ seconds.  
+Nevertheless, we set $g=0.01$ and analyzed the consequences of doing so by examining the 
+residuals.  For $\sigma_{r}^2$, we took the median of the MAST squared error estimates.  We find 
+significant variation of the median from image to image, but simply set $\sigma_{r}^2=0.05$ since 
+it comprises a small contribution to the model of $\var$ for the vast majority of the pixels in our 
+patches.
+
+\subsection{Optimization}
+
+We optimize the loss function:
+\begin{eqnarray}
+L =  \frac{1}{2}\sum_i\left(\ln(\var_i) + \sum_{i} \frac{\data_i - \model_i}{\var_i} + C\right) + 
+\epsilon \sum \gradients^2 
+\quad .
+\label{eqn:model-noflat}
+\end{eqnarray}
+
+\noindent The first term of this loss function is simply the negative log likelihood of the data, 
+when the constant $C$ is set to $\ln(2\pi)$.  The second term is a smoothness regularization which 
+we take to the gradient at pixel in the pixel-convolved PSF model times a regularization 
+strength $\epsilon$.
+
+\section{Results}
 
 \section{Discussion}
 
