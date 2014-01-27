@@ -11,8 +11,8 @@ def PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
                 patch_centers, background='linear', rendered_psfs=None,
                 sequence=['shifts', 'flat', 'psf'], tol=1.e-4, eps=1.e-4,
                 ini_shifts=None, shift_threads=1, psf_threads=1, floor=None,
-                gain=None, maxiter=np.Inf, dumpfilebase=None,
-                loss_kind='ssqe-sum-data'):
+                gain=None, maxiter=np.Inf, dumpfilebase=None, trim_frac=0.005,
+                min_frac=0.75, loss_kind='ssqe-sum-data'):
     """
     Patch fitting routines for BallPeenHammer.
     """
@@ -24,6 +24,9 @@ def PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
     if ini_shifts is not None:
         shifts = ini_shifts.copy()
 
+    Nmin = np.ceil(min_frac * data.shape[0]).astype(np.int)
+    mask = np.arange(data.shape[0]).astype(np.int)
+
     tot_ssqe = np.Inf
     iterations = 0
     while True:
@@ -31,26 +34,45 @@ def PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
             return current_flat, current_psf, shifts
         for kind in sequence:
             if kind == 'shifts':
-                shifts, ssqe = update_shifts(data, dq, current_flat,
+                shifts, ssqe = update_shifts(data[mask], dq[mask], current_flat,
                                              current_psf, psf_grid, patch_grid,
-                                             patch_centers, shifts, background,
-                                             shift_threads, loss_kind, floor, 
-                                             gain)
+                                             patch_centers, shifts,
+                                             background, shift_threads,
+                                             loss_kind, floor, gain)
 
-                print 'Shift step done, ssqe: ', ssqe.sum()
+                print 'Shift step done, pre ssqe: ', ssqe.sum()
+                if (trim_frac is not None) & (mask.size > Nmin):
+                    Ntrim = np.ceil(mask.size * trim_frac).astype(np.int)
+                    if (mask.size - Ntrim < Nmin):
+                        Ntrim = mask.size - Nmin
+                    ind = np.argsort(ssqe)[:-Ntrim]
+                    mask = mask[ind]
+                    shifts = shifts[ind]
+                    shifts, ssqe = update_shifts(data[mask], dq[mask],
+                                                 current_flat, current_psf,
+                                                 psf_grid, patch_grid,
+                                                 patch_centers, shifts,
+                                                 background, shift_threads,
+                                                 loss_kind, floor, gain)
+
+                print 'Shift step done, post ssqe: ', ssqe.sum()
                 if dumpfilebase is not None:
+                    f = open(dumpfilebase + '_mask_%d.dat' % iterations, 'w')
+                    for ind in mask:
+                        f.write('%d\n' % ind)
+                    f.close()
                     np.savetxt(dumpfilebase + '_shifts_%d.dat' % iterations,
                                shifts)
                     np.savetxt(dumpfilebase + '_shift_ssqe_%d.dat' % iterations,
                                ssqe)
 
             if kind == 'psf':
-                current_psf, ssqe = update_psf(data, dq, current_flat,
-                                               current_psf, psf_grid,
-                                               patch_grid, patch_centers,
-                                               shifts, background, eps,
-                                               psf_threads, loss_kind, floor, 
-                                               gain)
+                current_psf, ssqe = update_psf(data[mask], dq[mask],
+                                               current_flat, current_psf,
+                                               psf_grid, patch_grid,
+                                               patch_centers, shifts,
+                                               background, eps, psf_threads,
+                                               loss_kind, floor, gain)
 
                 print 'Psf step done, ssqe: ', ssqe.sum()
                 if dumpfilebase is not None:
@@ -73,7 +95,7 @@ def PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
                                                          tol=tol)
                 print 'Flat step done, ssqe: ', ssqe.sum()
 
-        if (tot_ssqe - (np.sum(ssqe)) / np.sum(ssqe)) < tol:
+        if ((tot_ssqe - np.sum(ssqe)) / np.sum(ssqe)) < tol:
             return current_flat, current_psf, shifts
         else:
             iterations += 1
@@ -117,7 +139,7 @@ def update_shifts(data, dq, current_flat, current_psf, psf_grid, patch_grid,
         pool.terminate()
         pool.join()
 
-    return shifts, ssqe
+    return shifts, ssqe / data.shape[0]
 
 def update_single_shift((p0, current_psf, datum, dq, flat, psf_grid,
                          background, loss_kind, floor, gain)):
@@ -149,6 +171,7 @@ def shift_loss(shift, psf_model, data, dq, flat, psf_grid, background,
                                              background))
     model = flat * (flux * psf[0] + bkg.reshape(data.shape))
     ssqe = data_loss(data[ind], model[ind], loss_kind, floor, gain)
+
     return np.sum(ssqe)
 
 def update_psf(data, dq, current_flat, current_psf, psf_grid, patch_grid, 
@@ -233,6 +256,9 @@ def psf_loss(psf_model, data, dq, current_flat, psf_grid, patch_grid,
         pool.close()
         pool.terminate()
         pool.join()
+
+    # scale by number of data points
+    ssqe /= data.shape[0]
 
     if summation:
         # regularization
@@ -354,10 +380,5 @@ def data_loss(data, model, kind, floor, gain, var=None):
         ssqe = sqe / np.sum(model) ** 2.
     if kind == 'nll-model':
         var = floor + gain * np.abs(model)
-        if np.any(var == 0):
-            print floor, gain, var
-            print model
-            print data
-            assert 0
         ssqe = 0.5 * (np.log(var) + sqe / var)
     return ssqe
