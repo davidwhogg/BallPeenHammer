@@ -1,6 +1,10 @@
+import string
+import random
 import numpy as np
 import pyfits as pf
 
+from scipy.interpolate import interp1d
+from utils.focus_calcs import get_hst_focus_models
 from data_manage.db_utils import get_data
 from BallPeenHammer.fitting import PatchFitter
 
@@ -8,16 +12,33 @@ from BallPeenHammer.fitting import PatchFitter
 xn, xx = 495, 519
 yn, yx = xn, xx 
 detector_size = xx - xn
+
+label = ''.join(random.choice(string.ascii_letters + string.digits)
+                for x in range(32))
+
 try:
-    dq = np.loadtxt('../data/dq_%d_%d_%d_%d.dat' % (xn, xx, yn, yx))
-    data = np.loadtxt('../data/data_%d_%d_%d_%d.dat' % (xn, xx, yn, yx))
+    dq = np.loadtxt('../data/region/dq_%d_%d_%d_%d.dat' % (xn, xx, yn, yx))
+    data = np.loadtxt('../data/region/data_%d_%d_%d_%d.dat' % (xn, xx, yn, yx))
+    focii = np.loadtxt('../data/region/focii_%d_%d_%d_%d.dat' %
+                       (xn, xx, yn, yx))
 except:
     data_dict = get_data(xn, xx, yn, yx)
     data = data_dict['pixels'] - data_dict['persist']
     dq = data_dict['dq']
-    np.savetxt('../data/dq_%d_%d_%d_%d.dat' % (xn, xx, yn, yx), dq)
-    np.savetxt('../data/data_%d_%d_%d_%d.dat' % (xn, xx, yn, yx), data)
+    meta = data_dict['patch_meta']
+    Npatches = meta.shape[0]
+    mjds = np.zeros(Npatches)
+    for i in range(Npatches):
+        f = pf.open(meta[i, -1][1:-1])
+        mjds[i] = 0.5 * (f[0].header['expstart'] + f[0].header['expend'])
+        f.close()
+    focii = get_hst_focus_models(mjds)
+    print focii
+    np.savetxt('../data/region/dq_%d_%d_%d_%d.dat' % (xn, xx, yn, yx), dq)
+    np.savetxt('../data/region/data_%d_%d_%d_%d.dat' % (xn, xx, yn, yx), data)
+    np.savetxt('../data/region/focii_%d_%d_%d_%d.dat' % (xn, xx, yn, yx), focii)
 
+assert 0
 patch_shape = (5, 5)
 dq = dq.reshape(dq.shape[0], patch_shape[0], patch_shape[1])
 data = data.reshape(dq.shape[0], patch_shape[0], patch_shape[1])
