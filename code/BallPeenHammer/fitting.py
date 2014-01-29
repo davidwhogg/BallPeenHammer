@@ -262,8 +262,9 @@ def psf_loss(psf_model, data, dq, current_flat, psf_grid, patch_grid,
 
     if summation:
         # regularization
-        grd = np.gradient(psf_model)
-        reg = eps * np.sum(grd[0] ** 2.) + eps * np.sum(grd[1] ** 2.)
+        reg = np.sum((psf_model[:, 1:] - psf_model[:, :-1]) ** 2.)
+        reg += np.sum((psf_model[1:, :] - psf_model[:-1, :]) ** 2.)
+        reg *= eps
 
         if np.mod(count, 50) == 0:
             print count, 'SSQE = %0.6f, REG = %0.6f' % (ssqe.sum(), reg)
