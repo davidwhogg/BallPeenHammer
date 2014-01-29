@@ -57,10 +57,8 @@ def PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
 
                 print 'Shift step done, post ssqe: ', ssqe.sum()
                 if dumpfilebase is not None:
-                    f = open(dumpfilebase + '_mask_%d.dat' % iterations, 'w')
-                    for ind in mask:
-                        f.write('%d\n' % ind)
-                    f.close()
+                    np.savetxt(dumpfilebase + '_mask_%d.dat' % iterations, ind,
+                               fmt='%d')
                     np.savetxt(dumpfilebase + '_shifts_%d.dat' % iterations,
                                shifts)
                     np.savetxt(dumpfilebase + '_shift_ssqe_%d.dat' % iterations,

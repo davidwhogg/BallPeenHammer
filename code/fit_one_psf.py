@@ -1,3 +1,5 @@
+import os
+import json
 import string
 import random
 import numpy as np
@@ -8,19 +10,37 @@ from utils.focus_calcs import get_hst_focus_models
 from data_manage.db_utils import get_data
 from BallPeenHammer.fitting import PatchFitter
 
+# parms
+eps = 1.e0
+gain = 0.01
+floor = 0.05
+s = ['shifts', 'psf']
+maxiter = 5
+cv_frac = 0.20
+minpixels = 18
+trim_frac = 0.005
+loss_kind = 'nll-model'
+background = 'constant'
+patch_shape = (5, 5)
+shift_threads = 4
+
 # get data from a region on the detector
 xn, xx = 495, 519
 yn, yx = xn, xx 
 detector_size = xx - xn
 
 label = ''.join(random.choice(string.ascii_letters + string.digits)
-                for x in range(32))
+                for x in range(16))
+dqfile = '../data/region/dq_%d_%d_%d_%d.dat' % (xn, xx, yn, yx)
+datafile = '../data/region/data_%d_%d_%d_%d.dat' % (xn, xx, yn, yx)
+fociifile = '../data/region/focii_%d_%d_%d_%d.dat' % (xn, xx, yn, yx)
+os.system('mkdir ../output/%s' % label)
+fname = '../output/%s/%s' % (label, label)
 
 try:
-    dq = np.loadtxt('../data/region/dq_%d_%d_%d_%d.dat' % (xn, xx, yn, yx))
-    data = np.loadtxt('../data/region/data_%d_%d_%d_%d.dat' % (xn, xx, yn, yx))
-    focii = np.loadtxt('../data/region/focii_%d_%d_%d_%d.dat' %
-                       (xn, xx, yn, yx))
+    dq = np.loadtxt(dqfile)
+    data = np.loadtxt(datafile)
+    focii = np.loadtxt(fociifile)
 except:
     data_dict = get_data(xn, xx, yn, yx)
     data = data_dict['pixels'] - data_dict['persist']
@@ -33,18 +53,15 @@ except:
         mjds[i] = 0.5 * (f[0].header['expstart'] + f[0].header['expend'])
         f.close()
     focii = get_hst_focus_models(mjds)
-    print focii
-    np.savetxt('../data/region/dq_%d_%d_%d_%d.dat' % (xn, xx, yn, yx), dq)
-    np.savetxt('../data/region/data_%d_%d_%d_%d.dat' % (xn, xx, yn, yx), data)
-    np.savetxt('../data/region/focii_%d_%d_%d_%d.dat' % (xn, xx, yn, yx), focii)
 
-assert 0
-patch_shape = (5, 5)
+    np.savetxt(dqfile, dq)
+    np.savetxt(datafile, data)
+    np.savetxt(fociifile, focii)
+
 dq = dq.reshape(dq.shape[0], patch_shape[0], patch_shape[1])
 data = data.reshape(dq.shape[0], patch_shape[0], patch_shape[1])
 
 # get rid of useless patchs
-minpixels = 18
 ind = []
 for i in range(data.shape[0]):
     test = dq[i] == 0
@@ -54,6 +71,15 @@ for i in range(data.shape[0]):
 dq = dq[ind]
 data = data[ind]
 
+# hold out fraction for CV if desired
+if cv_frac > 0.0:
+    Ndata = data.shape[0]
+    Ntrain = np.round((1. - cv_frac) * Ndata)
+    ind = np.random.random_integers(0, Ndata - 1, Ntrain)
+    np.savetxt(fname + '_train_inds.dat', ind, fmt='%d')
+    dq = dq[ind]
+    data = data[ind]
+    
 # initialize to tinytim
 f = pf.open('../psfs/tinytim-pixelconvolved-507-507.fits') # shape (41, 41)
 ini_psf = f[0].data
@@ -82,19 +108,40 @@ yp, xp = np.meshgrid(np.linspace(-ysize, ysize,
                                   data.shape[1]).astype(np.int))
 patch_grid = (xp, yp)
 
-s = ['shifts', 'psf']
-eps = 1.e2
+# record meta data for run
+runmeta = {}
+runmeta['dqfile'] = dqfile
+runmeta['datafile'] = datafile
+runmeta['fociifile'] = fociifile
+runmeta['eps'] = eps
+runmeta['gain'] = gain
+runmeta['floor'] = floor
+runmeta['maxiter'] = maxiter
+runmeta['cv_frac'] = cv_frac
+runmeta['minpixels'] = minpixels
+runmeta['trim_frac'] = trim_frac
+runmeta['loss_kind'] = loss_kind
+runmeta['background'] = background
+runmeta['patch_shape'] = patch_shape
+runmeta['shift_threads'] = shift_threads
+
+# write meta data
+j = json.dumps(runmeta)
+f = open('../output/%s_meta.json' % label, 'w')
+f.write(j)
+f.close()
+
 ini_flat = np.ones((detector_size, detector_size))
-fname = '../output/5x5psf_nll-model-trim-oldreg_%0.2f_%d_%d_%d_%d' % (np.log10(eps), 
-                                                                 xn, xx, yn, yx)
 
 import time
 t = time.time()
 flat, psf, shifts = PatchFitter(data, dq, ini_psf, ini_flat, patch_grid,
-                                psf_grid, patch_centers, background='constant',
-                                sequence=s, shift_threads=8, maxiter=5,
-                                eps=eps, trim_frac=0.005,
+                                psf_grid, patch_centers, background=background,
+                                sequence=s, shift_threads=shift_threads,
+                                maxiter=maxiter,
+                                eps=eps, trim_frac=trim_frac,
                                 ini_shifts=np.zeros((data.shape[0], 2)),
-                                dumpfilebase=fname, loss_kind='nll-model',
-                                floor=0.05, gain=0.01)
+                                dumpfilebase=fname, loss_kind=loss_kind,
+                                floor=floor, gain=gain)
 print time.time() - t
+os.system('python utils/run_list_html.py')
