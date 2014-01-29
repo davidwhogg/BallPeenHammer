@@ -103,6 +103,45 @@ It is built with open-source code,
 
 \section{Data}
 
+For this initial project, we focus on the F160W filter for the WFC3 IR channel.  Our goal is to build 
+an accurate PSF model that is sufficiently complex to deliver precise photometry across the 
+detector.  In order to facilitate this, we have acquired as much F160W images from the MAST 
+archive that meet our criteria for use.  Are criteria for an image to be downloaded is simple: the 
+images must be publicly available and have apertures that cover the full detector, namely they 
+have apertures \texttt{IR}, \textt{IR-FIX}, \texttt{IR-UVIS-CENTER}, or \texttt{IR-UVIS-FIX}.
+
+Similar to \citet{anderson06}, we only use \FLT images for our analysis.  \FLT images are calibrated 
+using the most recent models for the bias, flat field, CTE, etc, and for this work we assume there are 
+no errors in these calibrations that will effect our PSF estimation.  We choose to work with \FLT
+images for many reasons.  Primarily, we choose not to work with Drizzled or combined images
+because they introduce distortions to the underlying PSF that is not consistent across images, and 
+they introduce strongly correlated noise.  Additional benefits of the \FLT data are that they are 
+more numerous by a factor of a few, sources hit different positions on the detector due to dithering, 
+and they are well calibrated.  
+
+For each \FLT image, we extract high signal-to-noise objects which we believe to be stars.  There 
+are many approaches to find such sources, for simplicity we choose the following horrifying hack 
+procedure.  We run SExtractor \citep{bertin} and extract the `stellarity' index and blending/error 
+flags.  We call an object a `star' if it has stellarity greater than 0.8, has a peak pixel greater than 25
+times the median of the counts ($e^- / \rm{s}$) in the image, and has no SExtractor blending or 
+error flags.  More sensible approaches to source finding exist, but visual inspection of the images 
+show that these criteria generally point to high signal to noise starlike objects with little contamination.
+When modeling these sources, we require that any pixel used in the model have no data quality 
+flags other than zero (meaning no issues), as defined by the \texttt{DQ} extension in the \FLT file.
+
+The properties of the WFC3 IR detector, is such that electrons from previous and current exposures 
+will `persist' in pixels, resulting in electron counts higher than provided by the source in question.  
+The issue of persistences is mainly only troublesome for bright sources, where counts may be 
+enhanced by \RF{a few} percent of the counts provided the illuminating source.  This is generally 
+not an issue for the sources we consider here.  Nevertheless, we use the HST persistence 
+model\footnote{http://archive.stsci.edu/prepds/persist/search.php} to subtract off any possible 
+persistence in the observation.  For simplicity we assume that this model is perfect.
+
+In total, we extract sources from XXXX images, which were download from a list constructed on 
+DDMMYYYY.  In total, we have $\sim1.8$ million sources which we deem to be starlike, distributed 
+close to Poisson across the detector.  Our github repository contains a JSON list of the observations 
+downloaded.
+
 \section{Method}
 
 \subsection{Model}
