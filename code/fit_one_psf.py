@@ -6,11 +6,13 @@ import numpy as np
 import pyfits as pf
 
 from scipy.interpolate import interp1d
-from utils.focus_calcs import get_hst_focus_models
 from data_manage.db_utils import get_data
+from utils.grid_definitions import get_grid
 from BallPeenHammer.fitting import PatchFitter
+from utils.focus_calcs import get_hst_focus_models
 
 # parms
+run = 1
 eps = 1.e0
 gain = 0.01
 floor = 0.05
@@ -29,13 +31,15 @@ xn, xx = 495, 519
 yn, yx = xn, xx 
 detector_size = xx - xn
 
+# filenames, labels
 label = ''.join(random.choice(string.ascii_letters + string.digits)
                 for x in range(16))
 dqfile = '../data/region/dq_%d_%d_%d_%d.dat' % (xn, xx, yn, yx)
 datafile = '../data/region/data_%d_%d_%d_%d.dat' % (xn, xx, yn, yx)
 fociifile = '../data/region/focii_%d_%d_%d_%d.dat' % (xn, xx, yn, yx)
-os.system('mkdir ../output/%s' % label)
-fname = '../output/%s/%s' % (label, label)
+fname = '../output/run%d/%s/%s' % (run, label, label)
+trainindsfile = fname + '_train_inds.dat'
+os.system('mkdir ../output/run%d/%s' % (run, label))
 
 try:
     dq = np.loadtxt(dqfile)
@@ -75,44 +79,27 @@ data = data[ind]
 if cv_frac > 0.0:
     Ndata = data.shape[0]
     Ntrain = np.round((1. - cv_frac) * Ndata)
-    ind = np.random.random_integers(0, Ndata - 1, Ntrain)
-    np.savetxt(fname + '_train_inds.dat', ind, fmt='%d')
-    dq = dq[ind]
-    data = data[ind]
+    Ntest = Ndata - Ntrain
+    ind = np.random.permutation(np.arange(Ndata).astype(np.int))
+    traininds = ind[:Ntrain]
+    np.savetxt(trainindsfile, traininds, fmt='%d')
+    dq = dq[traininds]
+    data = data[traininds]
     
 # initialize to tinytim
 f = pf.open('../psfs/tinytim-pixelconvolved-507-507.fits') # shape (41, 41)
 ini_psf = f[0].data
 f.close()
 
-# random patch centers (actual not needed if not fitting flat)
-   # assign positions                                                           
-xsize = (data.shape[1] - 1) / 2.
-ysize = (data.shape[2] - 1) / 2.
-xc = np.random.randint(detector_size - 2 * xsize, size=data.shape[0])
-yc = np.random.randint(detector_size - 2 * ysize, size=data.shape[0])
-xc += xsize
-yc += ysize
-patch_centers = (xc, yc)
-
-# psf_grid defs
-xg = np.linspace(-0.5 * patch_shape[0], 0.5 * patch_shape[0],
-                  ini_psf.shape[0])
-yg = xg.copy()
-psf_grid = (xg, yg)
-
-# define patch_grid
-yp, xp = np.meshgrid(np.linspace(-ysize, ysize,
-                                  data.shape[2]).astype(np.int),
-                     np.linspace(-xsize, xsize,
-                                  data.shape[1]).astype(np.int))
-patch_grid = (xp, yp)
+psf_grid, patch_grid, patch_centers = get_grid(data.shape, detector_size, 
+                                               patch_shape)
 
 # record meta data for run
 runmeta = {}
 runmeta['dqfile'] = dqfile
 runmeta['datafile'] = datafile
 runmeta['fociifile'] = fociifile
+runmeta['trainindsfile'] = trainindsfile
 runmeta['eps'] = eps
 runmeta['gain'] = gain
 runmeta['floor'] = floor
@@ -127,7 +114,7 @@ runmeta['shift_threads'] = shift_threads
 
 # write meta data
 j = json.dumps(runmeta)
-f = open('../output/%s_meta.json' % label, 'w')
+f = open('../output/run1/%s_meta.json' % label, 'w')
 f.write(j)
 f.close()
 
