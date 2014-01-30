@@ -104,10 +104,10 @@ def cv_score(data, dq, psfs, background, floor, gain, toss_frac=0.005):
             ssqe[j] = data_loss(data[j], model, 'nll-model', floor, gain)
 
         if toss_frac > 0.0:
-            Ntoss = np.ciel(data.shape[0] * toss_frac)
+            Ntoss = np.ceil(data.shape[0] * toss_frac)
             ssqe = np.sort(ssqe)[:-Ntoss]
 
-        scores[i] = np.sum(ssqe)
+        scores[i] = np.median(ssqe)
 
     return scores
 
@@ -131,7 +131,7 @@ if __name__ == '__main__':
 
     run = 1
     threads = 4
-    toss_frac = 0.005
+    toss_frac = 0.0
     patch_shape = (5, 5)
 
     os.system('ls ../output/run%d/*json > foo' % run)
