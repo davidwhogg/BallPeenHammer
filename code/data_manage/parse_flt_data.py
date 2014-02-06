@@ -60,7 +60,7 @@ def run_source_extractor(sci, err, dql):
 
     # run source extractor
     os.system('../../local/sextractor-2.8.6/bin/sex data.fits' +
-              ' -c bph-wfc3-f160w.sex')
+              ' -c ./data_manage/bph-wfc3-f160w.sex')
 
 def get_patches(data, var, dql, centers, patch_size=5):
     """

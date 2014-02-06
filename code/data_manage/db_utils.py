@@ -10,7 +10,7 @@ def create_table(dbname, table, Npix=25):
                      'patch_meta', 'image_meta']
     command = 'CREATE TABLE IF NOT EXISTS '
 
-    colnames = get_table_colnames(table)
+    colnames = get_table_colnames(table, Npix)
 
     if table in ['pixels', 'var', 'dq', 'persist']:
         if table == 'dq':
@@ -24,7 +24,8 @@ def create_table(dbname, table, Npix=25):
 
     if table == 'patch_meta':
         create = command + 'patch_meta (id SERIAL, x INT, y INT, ' + \
-            'peak DOUBLE PRECISION, mast_file TEXT)'
+            'peak DOUBLE PRECISION, ra DOUBLE PRECISION, ' + \
+            'dec DOUBLE PRECISION, mast_file TEXT)'
 
     if table == 'image_meta':
         create = command + 'image_meta (mast_file TEXT, ' + \
@@ -37,26 +38,25 @@ def create_table(dbname, table, Npix=25):
     db.commit()
     db.close()
 
-def get_table_colnames(table):
+def get_table_colnames(table, Npix):
     """
     Return list of column names for table
     """
     if table == 'pixels':
-        colnames = ['pix%d' % i for i in range(25)]
+        colnames = ['pix%d' % i for i in range(Npix)]
     if table == 'var':
-        colnames = ['var%d' % i for i in range(25)]
+        colnames = ['var%d' % i for i in range(Npix)]
     if table == 'dq':
-        colnames = ['dq%d' % i for i in range(25)]
+        colnames = ['dq%d' % i for i in range(Npix)]
     if table == 'persist':
-        colnames = ['per%d' % i for i in range(25)]
+        colnames = ['per%d' % i for i in range(Npix)]
     if table == 'patch_meta':
-        colnames = ['x', 'y', 'peak', 'mast_file']
+        colnames = ['x', 'y', 'peak', 'ra', 'dec', 'mast_file']
     if table == 'image_meta':
-        colnames = ['mast_file', 'prop_id', 
-                    'Nsrcs']
+        colnames = ['mast_file', 'prop_id', 'Nsrcs']
     return colnames
 
-def insert_into_table(table, data, dbname):
+def insert_into_table(table, data, dbname, Npix):
     """
     Insert data into table, data is numpy array.
     """
@@ -70,7 +70,7 @@ def insert_into_table(table, data, dbname):
 
     arg = ','.join(cursor.mogrify(s, x) for x in data)
 
-    colnames = get_table_colnames(table)
+    colnames = get_table_colnames(table, Npix)
     insert_head = 'INSERT INTO ' + table + ' (' + \
         string.join(colnames, ',') + ') VALUES '
     insert = insert_head + arg

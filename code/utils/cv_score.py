@@ -5,6 +5,7 @@ import numpy as np
 from BallPeenHammer.fitting import fit_single_patch, data_loss
 from BallPeenHammer.fitting import update_single_shift
 from BallPeenHammer.generation import render_psfs
+from glob import glob
 
 def load_test_data(metas):
     """
@@ -118,11 +119,7 @@ def get_psf_files(metas):
     psffiles = []
     for i in range(len(metas)):
         directory = metas[:-10]
-        os.system('ls %s/*psf*.fits > foo')
-        f = open('foo')
-        Niter = len(f.readlines())
-        f.close()
-        os.system('rm foo')
+        Niter = len(glob('%s/*psf*fits' % directory))
         psffiles[i] = '%s/%s_psf_%d' % (directory, directory.split('/')[-1],
                                         Niter - 1)
     return psffiles
@@ -133,15 +130,12 @@ if __name__ == '__main__':
     threads = 4
     toss_frac = 0.0
     patch_shape = (5, 5)
+    detector_size = 519 - 495
 
-    os.system('ls ../output/run%d/*json > foo' % run)
-    f = open('foo')
-    metas = [l[:-1] for l in f.readlines()]
-    f.close()
-    os.system('rm foo')
+    metas = glob('../output/run%d/*json' % run)
 
     o = load_test_data(metas)
-    test_data, test_dq, epsilons, gain, floor, background = *o
+    test_data, test_dq, epsilons, gain, floor, background = o
 
     psffiles = get_psf_files(metas)
 

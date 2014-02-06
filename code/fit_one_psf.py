@@ -1,3 +1,4 @@
+
 import os
 import json
 import string
@@ -7,13 +8,13 @@ import pyfits as pf
 
 from scipy.interpolate import interp1d
 from data_manage.db_utils import get_data
-from utils.grid_definitions import get_grid
+from utils.grid_definitions import get_grids
 from BallPeenHammer.fitting import PatchFitter
 from utils.focus_calcs import get_hst_focus_models
 
 # parms
 run = 1
-eps = 1.e0
+eps = 1.e2
 gain = 0.01
 floor = 0.05
 s = ['shifts', 'psf']
@@ -91,7 +92,7 @@ f = pf.open('../psfs/tinytim-pixelconvolved-507-507.fits') # shape (41, 41)
 ini_psf = f[0].data
 f.close()
 
-psf_grid, patch_grid, patch_centers = get_grid(data.shape, detector_size, 
+psf_grid, patch_grid, patch_centers = get_grids(data.shape, detector_size, 
                                                patch_shape)
 
 # record meta data for run

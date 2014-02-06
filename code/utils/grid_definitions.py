@@ -1,7 +1,5 @@
 import numpy as np
 
-from utils.grid_definitions import get_grid
-
 def get_grids(data_shape, detector_size, patch_shape, Npsf=(41, 41)):
     """
     Return grid definitions used during fitting
@@ -19,7 +17,7 @@ def get_grids(data_shape, detector_size, patch_shape, Npsf=(41, 41)):
     # psf_grid defs
     xg = np.linspace(-0.5 * patch_shape[0], 0.5 * patch_shape[0],
                       Npsf[0])
-    xg = np.linspace(-0.5 * patch_shape[1], 0.5 * patch_shape[1],
+    yg = np.linspace(-0.5 * patch_shape[1], 0.5 * patch_shape[1],
                       Npsf[1])
     psf_grid = (xg, yg)
 
