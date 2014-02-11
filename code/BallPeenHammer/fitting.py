@@ -3,9 +3,7 @@ import numpy as np
 import pyfits as pf
 
 from .generation import render_psfs
-
-from scipy.optimize import fmin_bfgs, fmin_l_bfgs_b, fmin_tnc, fmin
-from scipy.optimize import fmin_cg, fmin_powell
+from scipy.optimize import fmin, fmin_powell
 
 def PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
                 patch_centers, background='linear', rendered_psfs=None,
@@ -21,8 +19,10 @@ def PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
     current_psf = ini_psf.copy()
     current_loss = np.Inf
     current_flat = ini_flat.copy()
-    if ini_shifts is not None:
-        shifts = ini_shifts.copy()
+    if ref_shifts is not None:
+        ref_shifts = ini_shifts.copy()
+    else:
+        ref_shifts = np.zeros(data.shape[0])
 
     Nmin = np.ceil(min_frac * data.shape[0]).astype(np.int)
     mask = np.arange(data.shape[0]).astype(np.int)
@@ -36,9 +36,11 @@ def PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
             if kind == 'shifts':
                 shifts, ssqe = update_shifts(data[mask], dq[mask], current_flat,
                                              current_psf, psf_grid, patch_grid,
-                                             patch_centers, shifts,
+                                             patch_centers, ref_shifts,
                                              background, shift_threads,
                                              loss_kind, floor, gain)
+                if iterations == 0:
+                    ref_shifts = shifts.copy()
 
                 print 'Shift step done, pre ssqe: ', ssqe.sum()
                 if (trim_frac is not None) & (mask.size > Nmin):
@@ -100,7 +102,7 @@ def PatchFitter(data, dq, ini_psf, ini_flat, patch_grid, psf_grid,
             tot_ssqe = np.sum(ssqe)
 
 def update_shifts(data, dq, current_flat, current_psf, psf_grid, patch_grid, 
-                  patch_centers, shifts, background, threads, loss_kind,
+                  patch_centers, ref_shifts, background, threads, loss_kind,
                   floor, gain):
     """
     Update the estimate of the subpixel shifts, given current psf and flat.
@@ -109,15 +111,16 @@ def update_shifts(data, dq, current_flat, current_psf, psf_grid, patch_grid,
     xpc, ypc = patch_centers[0], patch_centers[1]
 
     ssqe = np.zeros(data.shape[0])
+    shifts = np.zeros(data.shape[0])
     if threads == 1:
         for i in range(data.shape[0]):
-            p0 = shifts[i]
+            p0 = [0., 0.]
             flat = current_flat[xpg + xpc[i], ypg + ypc[i]]
             res = update_single_shift((p0, current_psf, data[i], dq[i], 
-                                       flat, psf_grid, background, loss_kind,
-                                       floor, gain))
+                                       flat, psf_grid, ref_shifts[i],
+                                       background, loss_kind, floor, gain))
             
-            shifts[i] = res[0]
+            shifts[i] = res[0] + ref_shifts[i]
             ssqe[i] = res[1]
     else:
         pool = multiprocessing.Pool(threads)
@@ -126,11 +129,12 @@ def update_shifts(data, dq, current_flat, current_psf, psf_grid, patch_grid,
         for i in range(data.shape[0]):
             flat = current_flat[xpg + xpc[i], ypg + ypc[i]]
             argslist[i] = [shifts[i], current_psf, data[i], dq[i], flat,
-                           psf_grid, background, loss_kind, floor, gain]
+                           psf_grid, ref_shifts[i], background, loss_kind,
+                           floor, gain]
 
         results = list(mapfn(update_single_shift, [args for args in argslist]))
         for i in range(data.shape[0]):
-            shifts[i] = results[i][0]
+            shifts[i] = results[i][0] + ref_shifts[i]
             ssqe[i] = results[i][1]
 
         pool.close()
@@ -139,7 +143,7 @@ def update_shifts(data, dq, current_flat, current_psf, psf_grid, patch_grid,
 
     return shifts, ssqe / data.shape[0]
 
-def update_single_shift((p0, current_psf, datum, dq, flat, psf_grid,
+def update_single_shift((p0, current_psf, datum, dq, flat, psf_grid, ref_shift,
                          background, loss_kind, floor, gain)):
     """
     Update a single shift, enabling multiprocessing
@@ -147,12 +151,12 @@ def update_single_shift((p0, current_psf, datum, dq, flat, psf_grid,
     # fmin seems to perform better than fmin_bfgs or fmin_l_bfgs_b
     # need to try fmin_powell
     res = fmin(shift_loss, p0, full_output=True, disp=False,
-               args=(current_psf, datum, dq, flat, psf_grid, 
+               args=(current_psf, datum, dq, flat, psf_grid, ref_shift,
                      background, loss_kind, floor, gain))
     return res
 
-def shift_loss(shift, psf_model, data, dq, flat, psf_grid, background,
-               loss_kind, floor, gain):
+def shift_loss(delta_shift, psf_model, data, dq, flat, psf_grid, ref_shift, 
+               background, loss_kind, floor, gain):
     """
     Evaluate the shift for a given patch.
     """
