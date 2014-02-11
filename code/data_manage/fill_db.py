@@ -30,7 +30,6 @@ for i in range(N):
     
     for fltfile in l:
         
-
         # load data run sextractor
         sci, err, dql, hds = load_data(fltfile)
         run_source_extractor(sci, err, dql)
@@ -42,9 +41,10 @@ for i in range(N):
         hdulist = fits.open(fltfile)
         w = wcs.WCS(hdulist[1].header)
         hdulist.close()
-    
+
         # limit data to unblended stars, within bounds
         buff = (patch_size - 1) / 2
+
         try:
             ind = (d[:, 1] < 99) & (d[:, -1] > 0.8) & \
                 (d[:, 5] > buff + 1) & (d[:, 5] < 1013 - buff) & \
@@ -62,9 +62,11 @@ for i in range(N):
         dec = astrometry[:, 1]
 
         # patchify
-        pd, pv, pq, xs, ys = get_patches(sci, err**2, dql, d[:, [6, 5]] - 1,
-                                         patch_size=patch_size)
+        pd, pv, pq, xs, ys, centers = get_patches(sci, err**2, dql,
+                                                  d[:, [6, 5]] - 1,
+                                                  patch_size=patch_size)
         peaks = pd[:, buff, buff]
+        d[:, [6, 5]] = centers + 1
 
         if pd.shape[0] < 1:
             continue
@@ -121,4 +123,3 @@ for i in range(N):
             insert_into_table('image_meta', meta, dbname, Npix)
 
         print i, fltfile, pd.shape[0]
-

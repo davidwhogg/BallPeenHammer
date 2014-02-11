@@ -11,7 +11,7 @@ from data_manage.db_utils import get_data
 from utils.grid_definitions import get_grids
 from BallPeenHammer.fitting import PatchFitter
 from utils.focus_calcs import get_hst_focus_models
-
+assert 0
 # parms
 run = 1
 eps = 1.e2

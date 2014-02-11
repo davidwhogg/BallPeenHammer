@@ -31,20 +31,11 @@ def subsample(model, xc, yc, Nsamp, inextent=2.4, outextent=2.4):
     fine_model = f(yn, xn)
     return fine_model
 
-def build_tinytim_pixel_convolved_model(model, Ng=41, psize=5.):
+def build_tinytim_pixel_convolved_model(model, Ng=41, psize=5., Nsamp=100):
     """
     Take in a tinytim model, construct the pixel-convolved
     model
     """
-    # magic numbers related to tinytim output
-    # when subsample=5 and patch_size=5
-    xc, yc = 68, 68
-    Nsamp = 100
-    delta = 17
-    inextent = 3.4
-    extent = 2.4
-    model = model[xc - delta: xc + delta + 1,
-                  yc - delta: yc + delta + 1]
 
     rng = (psize) / 2.
     xg, yg = np.meshgrid(np.linspace(-rng, rng, Ng),
@@ -81,18 +72,50 @@ def build_tinytim_pixel_convolved_model(model, Ng=41, psize=5.):
 
     return psf_model.reshape(Ng, Ng)
 
+def just_interpolate(model, extent, Ng=201):
+    """
+    Instead of binning, just interpolate the tinytim model
+    """
+    delta = (extent - 1.) / 2.
+    xo = np.linspace(-delta, delta, model.shape[0])
+    yo = np.linspace(-delta, delta, model.shape[1])
+    xn = np.linspace(-delta, delta, Ng)
+    yn = np.linspace(-delta, delta, Ng)
+
+    # definitions depend on scipy version
+    f = RectBivariateSpline(xo, yo, model)
+    fine_model = f(yn, xn)
+    return fine_model
+
+    
+
 if __name__ == '__main__':
 
-    model = '../../psfs/tinytim/tiny_k4_507_507.fits'
+    model = '../psfs/tinytim/tinytim_k4_507_507_15.fits'
     f = pf.open(model)
     model = f[0].data
     f.close()
+    print model.shape
+    # magic numbers related to tinytim output
+    xc, yc = 345, 345
+    delta = 12 * 5
+    model = model[xc - delta: xc + delta + 1,
+                  yc - delta: yc + delta + 1]
 
-    model = build_tinytim_pixel_convolved_model(model)
+
+    #model = build_tinytim_pixel_convolved_model(model, Ng=101, psize=25)
+
+    # dont do this is Ng < model.shape[0]
+    model = just_interpolate(model, 25)
+    model /= model.sum()
+
+    pl.imshow(model, interpolation='nearest', origin='lower',
+              norm=LogNorm(vmin=model.min(), vmax=model.max()))
+    pl.gray()
+    pl.savefig('../plots/foo.png')
+    print model.shape
 
     h = pf.PrimaryHDU(model)
-    h.writeto('../../psfs/tinytim-pixelconvolved-507-507.fits')
-
-    f = pl.figure()
-    pl.imshow(model, interpolation='nearest', origin='lower')
-    f.savefig('../../plots/foo.png')
+    h.writeto('../psfs/tinytim-pixelconvolved-507-507-25-201.fits',
+              clobber=True)
+    

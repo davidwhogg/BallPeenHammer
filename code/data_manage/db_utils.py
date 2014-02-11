@@ -79,13 +79,13 @@ def insert_into_table(table, data, dbname, Npix):
     db.commit()
     db.close()
 
-def get_data(xmin, xmax, ymin, ymax):
+def get_data(xmin, xmax, ymin, ymax, dbname):
 
     # data to grab, other than patch_meta
     keys = ['pixels', 'dq', 'var', 'persist']
 
     # connect
-    db = psycopg2.connect('dbname=f160w')
+    db = psycopg2.connect('dbname=%s' % dbname)
     cr = db.cursor()
     data = {}
 

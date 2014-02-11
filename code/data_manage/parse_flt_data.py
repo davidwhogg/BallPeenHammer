@@ -66,26 +66,29 @@ def get_patches(data, var, dql, centers, patch_size=5):
     """
     Return patched data, etc, at given centers.
     """
+    buff = (patch_size - 1) / 2
 
-    x, y = np.meshgrid(range(-(patch_size-1)/2, (patch_size-1)/2 + 1),
-                       range(-(patch_size-1)/2, (patch_size-1)/2 + 1))
-
-    xcs = (x.ravel()[None, :] + centers[:,0][:, None]).astype(np.int)
-    ycs = (y.ravel()[None, :] + centers[:,1][:, None]).astype(np.int)
-
-    test = data[xcs, ycs]
-    ind = np.argsort(test, axis=1)
-    xshift = x.ravel()[ind[:, -1]]
-    yshift = y.ravel()[ind[:, -1]]
-    ind = np.where((np.abs(xshift) < 2) & (np.abs(yshift) < 2))[0]
-    centers[ind, 0] += xshift[ind]
-    centers[ind, 1] += yshift[ind]
-    centers = centers[ind]
-
+    # SExtractor doesnt alway put peak on brightest pixel
+    # find shifts, up to 1 pixel that correct for this
+    x, y = np.meshgrid(range(-1, 2),
+                       range(-1, 2))
     xcs = (x[None, :, :] + centers[:,0][:, None, None]).astype(np.int)
     ycs = (y[None, :, :] + centers[:,1][:, None, None]).astype(np.int)
+    
+    for i in range(centers.shape[0]):
+        test = data[xcs[i], ycs[i]]
+        ind = (test == np.max(test))
+        centers[i, 0] += x[ind]
+        centers[i, 1] += y[ind]
 
-    return data[xcs, ycs], var[xcs, ycs], dql[xcs, ycs], xcs, ycs
+    # Full patch indices
+    x, y = np.meshgrid(range(-buff, buff + 1),
+                       range(-buff, buff + 1))
+    xcs = (x[None, :, :] + centers[:,0][:, None, None]).astype(np.int)
+    ycs = (y[None, :, :] + centers[:,1][:, None, None]).astype(np.int)
+    
+    return data[xcs, ycs], var[xcs, ycs], dql[xcs, ycs], xcs, ycs, \
+        centers
 
 def make_ds9_regions(centers):
     """
