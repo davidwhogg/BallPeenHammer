@@ -1,4 +1,3 @@
-
 import os
 import json
 import string
@@ -8,18 +7,17 @@ import pyfits as pf
 
 from scipy.interpolate import interp1d
 from data_manage.db_utils import get_data
-from utils.grid_definitions import get_grids
 from BallPeenHammer.fitting import PatchFitter
 from utils.focus_calcs import get_hst_focus_models
-assert 0
+
 # parms
-run = 1
+run = 2
 eps = 1.e2
 gain = 0.01
 floor = 0.05
 s = ['shifts', 'psf']
 maxiter = 5
-cv_frac = 0.20
+cv_frac = 0.0
 minpixels = 18
 trim_frac = 0.005
 loss_kind = 'nll-model'
@@ -42,26 +40,15 @@ fname = '../output/run%d/%s/%s' % (run, label, label)
 trainindsfile = fname + '_train_inds.dat'
 os.system('mkdir ../output/run%d/%s' % (run, label))
 
-try:
-    dq = np.loadtxt(dqfile)
-    data = np.loadtxt(datafile)
-    focii = np.loadtxt(fociifile)
-except:
-    data_dict = get_data(xn, xx, yn, yx)
-    data = data_dict['pixels'] - data_dict['persist']
-    dq = data_dict['dq']
-    meta = data_dict['patch_meta']
-    Npatches = meta.shape[0]
-    mjds = np.zeros(Npatches)
-    for i in range(Npatches):
-        f = pf.open(meta[i, -1][1:-1])
-        mjds[i] = 0.5 * (f[0].header['expstart'] + f[0].header['expend'])
-        f.close()
-    focii = get_hst_focus_models(mjds)
+# initialize to tinytim
+f = pf.open('../psfs/tinytim-pixelconvolved-507-507.fits') 
+ini_psf = f[0].data
+f.close()
 
-    np.savetxt(dqfile, dq)
-    np.savetxt(datafile, data)
-    np.savetxt(fociifile, focii)
+
+dq = np.loadtxt(dqfile)
+data = np.loadtxt(datafile)
+focii = np.loadtxt(fociifile)
 
 dq = dq.reshape(dq.shape[0], patch_shape[0], patch_shape[1])
 data = data.reshape(dq.shape[0], patch_shape[0], patch_shape[1])
@@ -87,14 +74,6 @@ if cv_frac > 0.0:
     dq = dq[traininds]
     data = data[traininds]
     
-# initialize to tinytim
-f = pf.open('../psfs/tinytim-pixelconvolved-507-507.fits') # shape (41, 41)
-ini_psf = f[0].data
-f.close()
-
-psf_grid, patch_grid, patch_centers = get_grids(data.shape, detector_size, 
-                                               patch_shape)
-
 # record meta data for run
 runmeta = {}
 runmeta['dqfile'] = dqfile
@@ -115,7 +94,7 @@ runmeta['shift_threads'] = shift_threads
 
 # write meta data
 j = json.dumps(runmeta)
-f = open('../output/run1/%s_meta.json' % label, 'w')
+f = open('../output/run%d/%s_meta.json' % (run, label), 'w')
 f.write(j)
 f.close()
 
@@ -123,8 +102,10 @@ ini_flat = np.ones((detector_size, detector_size))
 
 import time
 t = time.time()
-flat, psf, shifts = PatchFitter(data, dq, ini_psf, ini_flat, patch_grid,
-                                psf_grid, patch_centers, background=background,
+#data = data[:100]
+#dq = dq[:100]
+flat, psf, shifts = PatchFitter(data, dq, ini_psf, ini_flat,
+                                background=background,
                                 sequence=s, shift_threads=shift_threads,
                                 maxiter=maxiter,
                                 eps=eps, trim_frac=trim_frac,
@@ -132,4 +113,4 @@ flat, psf, shifts = PatchFitter(data, dq, ini_psf, ini_flat, patch_grid,
                                 dumpfilebase=fname, loss_kind=loss_kind,
                                 floor=floor, gain=gain)
 print time.time() - t
-os.system('python utils/run_list_html.py')
+#os.system('python utils/run_list_html.py %d')
