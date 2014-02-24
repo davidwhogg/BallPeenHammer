@@ -7,7 +7,7 @@ from .patch_fitting import fit_single_patch, data_loss
 from scipy.optimize import fmin, fmin_powell
 
 
-def update_psf(data, dq, current_flat, current_psf, 
+def update_psf(data, dq, current_flat, current_psf, patch_shape,
                patch_centers, shifts, background, eps, threads, loss_kind,
                floor, gain, clip_parms):
     """
@@ -15,11 +15,12 @@ def update_psf(data, dq, current_flat, current_psf,
     """
     global count
     count = 0
-
-    psf_grid, patch_grid, pcs = get_grids(data.shape, current_flat.shape[0],
-                                          data[0].shape)
+    psf_grid, patch_grid = get_grids(current_flat.shape, patch_shape,
+                                     current_psf.shape,
+                                     core_shape=data[0].shape)
     if patch_centers is None:
-        patch_centers = pcs
+        c = np.ones(data.shape[0]).astype(np.int) * (patch_shape[0] + 1)/ 2
+        patch_centers = (c, c)
 
     p0 = np.log(current_psf.ravel().copy())
 
@@ -61,7 +62,8 @@ def psf_loss(psf_model, data, dq, current_flat, psf_grid, patch_grid,
         for i in range(data.shape[0]):
             datum = data[i].ravel()
             psf = rendered_psfs[i].ravel()
-            flat = current_flat[xpg + xpc[i], ypg + ypc[i]].ravel()
+            #flat = current_flat[xpg + xpc[i], ypg + ypc[i]].ravel()
+            flat = np.ones_like(datum) # fix me!!!
             flux, bkg_parms, bkg, ind = fit_single_patch((datum,
                                                           psf, flat,
                                                           dq[i].ravel(),

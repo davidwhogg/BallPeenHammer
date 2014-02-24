@@ -58,8 +58,6 @@ def PatchFitter(data, dq, ini_psf, ini_flat,
                                              patch_centers, ref_shifts,
                                              background, shift_threads,
                                              loss_kind, floor, gain, None)
-                print ssqe.sum()
-                assert 0
                 if iterations == 0:
                     ref_shifts = shifts.copy()
 
@@ -84,10 +82,13 @@ def PatchFitter(data, dq, ini_psf, ini_flat,
                                                  dq[:, xcore[0]:xcore[1],
                                                     ycore[0]:ycore[1]],
                                                  current_flat, current_psf,
+                                                 data[0].shape,
                                                  patch_centers,
                                                  ref_shifts,
                                                  background, shift_threads,
                                                  loss_kind, floor, gain, None)
+                else:
+                    ind = np.arange(data.shape[0])
 
                 print 'Shift step done, post ssqe: ', ssqe.sum()
 
@@ -102,6 +103,7 @@ def PatchFitter(data, dq, ini_psf, ini_flat,
             if kind == 'psf':
                 current_psf, ssqe = update_psf(data, dq,
                                                current_flat, current_psf,
+                                               data[0].shape,
                                                patch_centers,
                                                shifts,
                                                background, eps, psf_threads,

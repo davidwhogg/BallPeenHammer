@@ -83,7 +83,7 @@ def shift_loss(delta_shift, psf_model, data, dq, flat, psf_grid, ref_shift,
     shape = (1, data.shape[0], data.shape[1])
     psf = render_psfs(psf_model, np.array([shift]), shape, psf_grid[0],
                       psf_grid[1])
- 
+
     psf = psf.ravel()
     data = data.ravel()
     flat = flat.ravel()
@@ -96,3 +96,25 @@ def shift_loss(delta_shift, psf_model, data, dq, flat, psf_grid, ref_shift,
     ssqe = data_loss(data[ind], model[ind], loss_kind, floor, gain)
 
     return np.sum(ssqe)
+
+def diagnostic_plot(data, model, floor, gain, patch_shape=(5, 5)):
+    """
+    Quick and dirty plot to check things are ok
+    """
+    import matplotlib.pyplot as pl
+    f = pl.figure(figsize=(12, 4))
+    pl.subplot(131)
+    pl.imshow(data.reshape(patch_shape), interpolation='nearest',
+              origin='lower')
+    pl.colorbar()
+    pl.subplot(132)
+    pl.imshow(model.reshape(patch_shape), interpolation='nearest',
+              origin='lower')
+    pl.colorbar()
+    pl.subplot(133)
+    var = floor + gain * np.abs(model)
+    pl.imshow(((data - model) ** 2. / var).reshape(patch_shape),
+              interpolation='nearest', origin='lower')
+    pl.colorbar()
+    f.savefig('../plots/foo.png')
+    assert 0

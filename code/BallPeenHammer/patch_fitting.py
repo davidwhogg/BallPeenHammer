@@ -39,12 +39,13 @@ def fit_single_patch((data, psf, flat, dq, background, floor, gain,
         sigma = clip_parms[1]
         for i in range(Niter):
             # define model and noise
-            model = psf[ind] * parms + bkg[ind]
-            var = floor + gain * np.abs(model[ind])
+            model = psf[ind] * parms[0] + bkg[ind]
+            var = floor + gain * np.abs(model)
             
             # sigma clip
-            chi = np.abs(data[ind] - model[ind]) / np.sqrt(var)
-            ind = np.where((dq == 0) & (chi2 < sigma))
+            chi = np.abs(data[ind] - model) / np.sqrt(var)
+            idx = np.where(chi > sigma)[0]
+            ind = np.delete(ind, idx)
 
             # refit
             rh = np.dot(A[ind, :].T, data[ind])

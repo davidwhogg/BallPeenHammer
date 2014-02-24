@@ -70,8 +70,8 @@ def get_patches(data, var, dql, centers, patch_size=5):
 
     # SExtractor doesnt alway put peak on brightest pixel
     # find shifts, up to 1 pixel that correct for this
-    x, y = np.meshgrid(range(-1, 2),
-                       range(-1, 2))
+    x, y = np.meshgrid(range(-2, 3),
+                       range(-2, 3))
     xcs = (x[None, :, :] + centers[:,0][:, None, None]).astype(np.int)
     ycs = (y[None, :, :] + centers[:,1][:, None, None]).astype(np.int)
     
