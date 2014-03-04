@@ -44,7 +44,11 @@ def fit_single_patch((data, psf, flat, dq, background, floor, gain,
             
             # sigma clip
             chi = np.abs(data[ind] - model) / np.sqrt(var)
-            idx = np.where(chi > sigma)[0]
+            if type(sigma != float):
+                condition = chi - sigma[ind]
+            else:
+                condition = chi - sigma
+            idx = np.where(condition > 0)[0]
             ind = np.delete(ind, idx)
 
             # refit

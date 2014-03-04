@@ -20,6 +20,8 @@ def PatchFitter(data, dq, ini_psf, ini_flat,
     assert np.mod(data[0].shape[0], 2) == 1, 'Patch shape[0] must be odd'
     assert np.mod(data[0].shape[1], 2) == 1, 'Patch shape[1] must be odd'
     assert np.mod(core_size, 2) == 1, 'Core size must be odd'
+    for i in range(len(sequence)):
+        assert sequence[0] in ['shifts', 'flat', 'psf']
 
     # core inidices
     xcenter = (data[0].shape[0] - 1) / 2
@@ -57,7 +59,7 @@ def PatchFitter(data, dq, ini_psf, ini_flat,
                                              data[0].shape,
                                              patch_centers, ref_shifts,
                                              background, shift_threads,
-                                             loss_kind, floor, gain, None)
+                                             loss_kind, floor, gain, clip_parms)
                 if iterations == 0:
                     ref_shifts = shifts.copy()
 
@@ -86,7 +88,8 @@ def PatchFitter(data, dq, ini_psf, ini_flat,
                                                  patch_centers,
                                                  ref_shifts,
                                                  background, shift_threads,
-                                                 loss_kind, floor, gain, None)
+                                                 loss_kind, floor, gain,
+                                                 clip_parms)
                 else:
                     ind = np.arange(data.shape[0])
 

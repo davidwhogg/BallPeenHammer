@@ -51,6 +51,8 @@ def build_tinytim_pixel_convolved_model(model, Ng=41, psize=5., Nsamp=100):
     xs = xs.ravel()
     ys = ys.ravel()
 
+    
+
     psf_model = np.zeros(Ng ** 2)
     # this is dumbass
     for i in range(Nsteps):
@@ -58,7 +60,6 @@ def build_tinytim_pixel_convolved_model(model, Ng=41, psize=5., Nsamp=100):
 
             xc = -0.5 + i * step
             yc = -0.5 + j * step
-            print i, j, xc, yc
 
             xp = xs + xc
             yp = ys + yc
@@ -87,7 +88,35 @@ def just_interpolate(model, extent, Ng=201):
     fine_model = f(yn, xn)
     return fine_model
 
-    
+def subsample2(model, Nsamp):
+    """
+    Make a subsampled tiny tim model
+    """
+    xextent = (model.shape[0] - 1) / 2
+    yextent = (model.shape[1] - 1) / 2
+    xo = np.linspace(-xextent, xextent, model.shape[0])
+    yo = np.linspace(-yextent, yextent, model.shape[1])
+    xn = np.linspace(-xextent, xextent, Nsamp)
+    yn = np.linspace(-yextent, yextent, Nsamp)
+
+    # definitions depend on scipy version
+    f = RectBivariateSpline(xo, yo, model)
+    fine_model = f(yn, xn)
+    return fine_model
+
+def rebin2(model, binsize):
+    """
+    Sum up a tinytim model in bins, aka 'pixel-convolve'
+    """
+    Nx = model.shape[0] / binsize
+    Ny = model.shape[1] / binsize
+    # yes, this is dumbass
+    output = np.zeros((Nx, Ny))
+    for i in range(Nx):
+        for j in range(Ny):
+            output[i, j] = np.sum(model[i * binsize: (i + 1) * binsize,
+                                        j * binsize: (j + 1) * binsize])
+    return output
 
 if __name__ == '__main__':
 
@@ -95,18 +124,23 @@ if __name__ == '__main__':
     f = pf.open(model)
     model = f[0].data
     f.close()
-    print model.shape
+
+    Ng = 73
+    Nsamp = Ng ** 2
+    patch_size = 9
+    halfminusone = (patch_size - 1) / 2
+
     # magic numbers related to tinytim output
     xc, yc = 345, 345
-    delta = 12 * 5
+    subsample = 5
+    delta = halfminusone * subsample
     model = model[xc - delta: xc + delta + 1,
                   yc - delta: yc + delta + 1]
+    center = delta
+    assert model.max() == model[center, center]
 
-
-    #model = build_tinytim_pixel_convolved_model(model, Ng=101, psize=25)
-
-    # dont do this is Ng < model.shape[0]
-    model = just_interpolate(model, 25)
+    model = subsample2(model, Nsamp)
+    model = rebin2(model, Ng)
     model /= model.sum()
 
     pl.imshow(model, interpolation='nearest', origin='lower',
@@ -116,6 +150,17 @@ if __name__ == '__main__':
     print model.shape
 
     h = pf.PrimaryHDU(model)
-    h.writeto('../psfs/tinytim-pixelconvolved-507-507-25-201.fits',
+    h.writeto('../psfs/foo.fits',
               clobber=True)
     
+    """
+    model = build_tinytim_pixel_convolved_model(model, Ng=201, psize=25)
+
+    # dont do this is Ng < model.shape[0]
+    if False:
+        extent = 5
+        Ng = 41
+        model = just_interpolate(model, extent, Ng)
+    
+    model /= model.sum()
+    """

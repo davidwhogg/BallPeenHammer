@@ -16,15 +16,15 @@ eps = 1.e2
 gain = 0.01
 floor = 0.05
 s = ['shifts', 'psf']
-maxiter = 0
+maxiter = 4
 cv_frac = 0.0
 minpixels = 18
-trim_frac = 0.005
+trim_frac = 0.002
 loss_kind = 'nll-model'
 background = 'constant'
-patch_shape = (25, 25)
 shift_threads = 4
-initial_psf_file = '../psfs/tinytim-pixelconvolved-507-507-25-201.fits'
+patch_shape = (5, 5)
+initial_psf_file = '../psfs/gaussian-pixelconvolved-5-41.fits'
 
 # get data from a region on the detector
 xn, xx = 495, 519
@@ -34,9 +34,12 @@ detector_size = xx - xn
 # filenames, labels
 label = ''.join(random.choice(string.ascii_letters + string.digits)
                 for x in range(16))
-dqfile = '../data/region/dq_%d_%d_%d_%d-25.dat' % (xn, xx, yn, yx)
-datafile = '../data/region/data_%d_%d_%d_%d-25.dat' % (xn, xx, yn, yx)
-fociifile = '../data/region/focii_%d_%d_%d_%d-25.dat' % (xn, xx, yn, yx)
+dqfile = '../data/region/dq_%d_%d_%d_%d-%d.dat' % \
+    (xn, xx, yn, yx, patch_shape[0])
+datafile = '../data/region/data_%d_%d_%d_%d-%d.dat' % \
+         (xn, xx, yn, yx, patch_shape[0])
+fociifile = '../data/region/focii_%d_%d_%d_%d-%d.dat' % \
+         (xn, xx, yn, yx, patch_shape[0])
 fname = '../output/run%d/%s/%s' % (run, label, label)
 trainindsfile = fname + '_train_inds.dat'
 os.system('mkdir ../output/run%d/%s' % (run, label))
@@ -102,8 +105,6 @@ ini_flat = np.ones((detector_size, detector_size))
 
 import time
 t = time.time()
-data = data[:500]
-dq = dq[:500]
 flat, psf, shifts = PatchFitter(data, dq, ini_psf, ini_flat,
                                 background=background,
                                 sequence=s, shift_threads=shift_threads,
@@ -111,6 +112,6 @@ flat, psf, shifts = PatchFitter(data, dq, ini_psf, ini_flat,
                                 eps=eps, trim_frac=trim_frac,
                                 ini_shifts=np.zeros((data.shape[0], 2)),
                                 dumpfilebase=fname, loss_kind=loss_kind,
-                                floor=floor, gain=gain)
+                                floor=floor, gain=gain, clip_parms=None)
 print time.time() - t
 #os.system('python utils/run_list_html.py %d')

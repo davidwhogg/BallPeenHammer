@@ -1,6 +1,6 @@
 import numpy as np
 
-def get_grids(detector_shape, patch_shape, psf_shape, core_shape=None):
+def get_grids(patch_shape, psf_shape, core_shape=None):
     """
     Return grid definitions used during fitting
     """

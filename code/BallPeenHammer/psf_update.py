@@ -15,9 +15,8 @@ def update_psf(data, dq, current_flat, current_psf, patch_shape,
     """
     global count
     count = 0
-    psf_grid, patch_grid = get_grids(current_flat.shape, patch_shape,
-                                     current_psf.shape,
-                                     core_shape=data[0].shape)
+    psf_grid, patch_grid = get_grids(patch_shape, current_psf.shape)
+
     if patch_centers is None:
         c = np.ones(data.shape[0]).astype(np.int) * (patch_shape[0] + 1)/ 2
         patch_centers = (c, c)

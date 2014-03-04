@@ -6,9 +6,9 @@ from astropy.io import fits
 from astropy import wcs
 from db_utils import *
 
-dbname = 'foo5'
+dbname = 'f160w_9'
 keys = ['Primary', 'SCI', 'ERR', 'DQ']
-patch_size = 5
+patch_size = 9
 Npix = patch_size ** 2
 
 # create tables if necessary

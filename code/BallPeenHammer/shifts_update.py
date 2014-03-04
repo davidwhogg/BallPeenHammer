@@ -12,9 +12,9 @@ def update_shifts(data, dq, current_flat, current_psf, patch_shape,
     """
     Update the estimate of the subpixel shifts, given current psf and flat.
     """
-    psf_grid, patch_grid = get_grids(current_flat.shape, patch_shape,
-                                     current_psf.shape,
+    psf_grid, patch_grid = get_grids(patch_shape, current_psf.shape,
                                      core_shape=data[0].shape)
+
     if patch_centers is None:
         c = np.ones(data.shape[0]).astype(np.int) * (patch_shape[0] + 1)/ 2
         patch_centers = (c, c)
@@ -67,6 +67,7 @@ def update_single_shift((p0, current_psf, datum, dq, flat, psf_grid, ref_shift,
     res = fmin_powell(shift_loss, p0, full_output=True, disp=False,
                args=(current_psf, datum, dq, flat, psf_grid, ref_shift,
                      background, loss_kind, floor, gain, clip_parms))
+
     return res
 
 def shift_loss(delta_shift, psf_model, data, dq, flat, psf_grid, ref_shift, 
