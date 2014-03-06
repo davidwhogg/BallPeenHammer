@@ -47,6 +47,7 @@ def psf_loss(psf_model, data, dq, current_flat, psf_grid, patch_grid,
 
     D = np.sqrt(psf_model.size)
     psf_model = np.exp(psf_model.reshape(D, D))
+
     rendered_psfs = render_psfs(psf_model, shifts, data.shape, psf_grid[0],
                                 psf_grid[1])
 

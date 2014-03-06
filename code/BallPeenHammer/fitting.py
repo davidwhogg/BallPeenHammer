@@ -12,7 +12,7 @@ def PatchFitter(data, dq, ini_psf, ini_flat,
                 ini_shifts=None, shift_threads=1, psf_threads=1, floor=None,
                 gain=None, maxiter=np.Inf, dumpfilebase=None, trim_frac=0.005,
                 min_frac=0.75, loss_kind='nll-model', core_size=5,
-                clip_parms=None):
+                clip_parms=None, final_clip=[1, 4.]):
     """
     Patch fitting routines for BallPeenHammer.
     """
@@ -26,7 +26,7 @@ def PatchFitter(data, dq, ini_psf, ini_flat,
     # core inidices
     xcenter = (data[0].shape[0] - 1) / 2
     ycenter = (data[0].shape[1] - 1) / 2
-    buff = (core_size - 1) /2
+    buff = (core_size - 1) / 2
     xcore = xcenter - buff, xcenter + buff + 1
     ycore = ycenter - buff, ycenter + buff + 1
 
@@ -47,8 +47,17 @@ def PatchFitter(data, dq, ini_psf, ini_flat,
     tot_ssqe = np.Inf
     iterations = 0
     while True:
+        if clip_parms is None:
+            cp = None
+        else:
+            try:
+                cp = clip_parms[interations]
+            except:
+                cp = final_clip
+
         if iterations > maxiter:
             return current_flat, current_psf, shifts
+
         for kind in sequence:
             if kind == 'shifts':
                 shifts, ssqe = update_shifts(data[:, xcore[0]:xcore[1],
@@ -59,12 +68,13 @@ def PatchFitter(data, dq, ini_psf, ini_flat,
                                              data[0].shape,
                                              patch_centers, ref_shifts,
                                              background, shift_threads,
-                                             loss_kind, floor, gain, clip_parms)
+                                             loss_kind, floor, gain, None)
                 if iterations == 0:
                     ref_shifts = shifts.copy()
 
                 print 'Shift step done, pre ssqe: ', ssqe.sum()
                 if (trim_frac is not None) & (mask.size > Nmin):
+                    assert trim_frac > 0., 'trim_frac must be positive or None'
                     Ntrim = np.ceil(mask.size * trim_frac).astype(np.int)
                     if (mask.size - Ntrim < Nmin):
                         Ntrim = mask.size - Nmin
@@ -89,7 +99,7 @@ def PatchFitter(data, dq, ini_psf, ini_flat,
                                                  ref_shifts,
                                                  background, shift_threads,
                                                  loss_kind, floor, gain,
-                                                 clip_parms)
+                                                 None)
                 else:
                     ind = np.arange(data.shape[0])
 
@@ -111,7 +121,7 @@ def PatchFitter(data, dq, ini_psf, ini_flat,
                                                shifts,
                                                background, eps, psf_threads,
                                                loss_kind, floor, gain,
-                                               clip_parms)
+                                               cp)
 
                 print 'Psf step done, ssqe: ', ssqe.sum()
                 if dumpfilebase is not None:
