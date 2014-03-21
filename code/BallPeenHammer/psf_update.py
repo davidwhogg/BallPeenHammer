@@ -4,7 +4,7 @@ import numpy as np
 from .grid_definitions import get_grids
 from .generation import render_psfs
 from .patch_fitting import fit_single_patch, data_loss
-from scipy.optimize import fmin, fmin_powell
+from scipy.optimize import fmin_powell
 
 
 def update_psf(data, dq, current_flat, current_psf, patch_shape,

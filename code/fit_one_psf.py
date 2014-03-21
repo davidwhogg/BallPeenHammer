@@ -11,26 +11,26 @@ from BallPeenHammer.fitting import PatchFitter
 from utils.focus_calcs import get_hst_focus_models
 
 # parms
-run = 25
-eps = 1.e15
+run = 0
+eps = 1.e1
 gain = 0.01
 floor = 0.05
 s = ['shifts', 'psf']
-maxiter = 10
+maxiter = 0
 cv_frac = 0.0
 minpixels = 18
-trim_frac = 0.005
+trim_frac = None
 loss_kind = 'nll-model'
 background = 'constant'
-shift_threads = 4
-patch_shape = (25, 25)
-initial_psf_file = '../psfs/tinytim-pixelconvolved-507-507-25-201.fits'
+shift_threads = 8
+patch_shape = (5, 5)
+initial_psf_file = '../psfs/tinytim-pixelconvolved-507-507-5-41.fits'
 
 clip_parms = [[1, 300], [1, 100], [1, 30], [1, 10.], [1, 6.], [1, 5.]]
 #clip_parms = None
 
 # get data from a region on the detector
-xn, xx = 422, 592
+xn, xx = 495, 519
 yn, yx = xn, xx 
 detector_size = xx - xn
 

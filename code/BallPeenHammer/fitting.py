@@ -2,9 +2,10 @@ import multiprocessing
 import numpy as np
 import pyfits as pf
 
-from .psf_update import update_psf
 from .flat_update import update_flat
 from .shifts_update import update_shifts
+from .psf_update import update_psf as slow_psf_update
+from .fast_psf_update import update_psf as fast_psf_update
 
 def PatchFitter(data, dq, ini_psf, ini_flat,
                 patch_centers=None, background='linear', rendered_psfs=None,
@@ -12,7 +13,7 @@ def PatchFitter(data, dq, ini_psf, ini_flat,
                 ini_shifts=None, shift_threads=1, psf_threads=1, floor=None,
                 gain=None, maxiter=np.Inf, dumpfilebase=None, trim_frac=0.005,
                 min_frac=0.75, loss_kind='nll-model', core_size=5,
-                clip_parms=None, final_clip=[1, 4.]):
+                clip_parms=None, final_clip=[1, 4.], fast=True):
     """
     Patch fitting routines for BallPeenHammer.
     """
@@ -22,6 +23,11 @@ def PatchFitter(data, dq, ini_psf, ini_flat,
     assert np.mod(core_size, 2) == 1, 'Core size must be odd'
     for i in range(len(sequence)):
         assert sequence[0] in ['shifts', 'flat', 'psf']
+
+    if fast:
+        update_psf = fast_psf_update
+    else:
+        update_psf = slow_psf_update
 
     # core inidices
     xcenter = (data[0].shape[0] - 1) / 2

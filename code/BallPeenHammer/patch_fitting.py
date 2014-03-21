@@ -1,5 +1,8 @@
 import numpy as np
 
+from .generation import render_psfs
+from .grid_definitions import get_grids
+
 def fit_single_patch((data, psf, flat, dq, background, floor, gain,
                       clip_parms)):
     """
@@ -94,3 +97,35 @@ def data_loss(data, model, kind, floor, gain, var=None, q=0.02):
         var = floor + gain * np.abs(model)
         ssqe = 0.5 * (np.log(var) + sqe / var)
     return ssqe
+
+def render_models(data, dq, psf_model, shifts, floor, gain, clip_parms=None,
+                  background='constant', loss_kind='nll-model'):
+    """
+    Render a set of models
+    """
+    loss_kind = 'sqe'
+    patch_shape = (data.shape[1], data.shape[2])
+    psf_grid, patch_grid = get_grids(patch_shape, psf_model.shape)
+
+    rendered_psfs = render_psfs(psf_model, shifts, data.shape, psf_grid[0],
+                                psf_grid[1])
+    xpg, ypg = patch_grid[0], patch_grid[1]
+
+    ssqe = np.zeros(data.shape[0])
+    models = np.zeros((data.shape[0], data.shape[1] * data.shape[2]))
+
+    for i in range(data.shape[0]):
+        datum = data[i].ravel()
+        psf = rendered_psfs[i].ravel()
+        flat = np.ones_like(datum) # fix me!!!
+        flux, bkg_parms, bkg, ind = fit_single_patch((datum,
+                                                      psf, flat,
+                                                      dq[i].ravel(),
+                                                      background, floor,
+                                                      gain, clip_parms))
+        model = flat * (flux * psf + bkg)
+        s = data_loss(datum[ind], model[ind], loss_kind, floor, gain)
+        ssqe[i] = np.sum(s)
+        models[i] = model
+
+    return models, ssqe
