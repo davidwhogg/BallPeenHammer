@@ -1,7 +1,7 @@
 import numpy as np
 
 from scipy.special import erf
-from scipy.interpolate import RectBivariateSpline
+from scipy.interpolate import RectBivariateSpline, interp2d
 
 def get_gaussian_psf_pixel(parms, extent):
     """
@@ -27,11 +27,12 @@ def get_gaussian_psf_pixel(parms, extent):
     assert N == 1., 'amplitudes of gaussians dont sum to one.'
     return pval
 
-def render_psfs(psf_model, shifts, data_shape, xpsf, ypsf):
+def render_psfs(psf_model, shifts, data_shape, xpsf, ypsf, k=3):
     """
     Make psfs under current model.
     """
-    interp_func = RectBivariateSpline(xpsf, ypsf, psf_model)
+    interp_func = RectBivariateSpline(xpsf, ypsf, psf_model, kx=k, ky=k)
+    #interp_func = interp2d(xpsf, ypsf, psf_model)
     psfs = np.zeros(data_shape)
     patch_shape = (data_shape[1], data_shape[2])
 
