@@ -3,11 +3,11 @@ import numpy as np
 
 from .grid_definitions import get_grids
 from .generation import render_psfs
-from .patch_fitting import fit_single_patch, data_loss
-from scipy.optimize import fmin_powell
+from .patch_fitting import data_loss, evaluate, fit_single_patch
+from .derivatives import get_derivatives, local_regularization
 
-
-def update_psf(data, dq, psf_model, patch_shape, shifts, background, eps,
+def update_psf(data, dq, psf_model, patch_shape, shifts,
+               background, eps,
                loss_kind, floor, gain, clip_parms, Nthreads, h,
                old_psf_steps=None, old_total_cost=np.inf, small=1.e-16, 
                tol=1.e-1, rate=2., ini_step=0.1):
@@ -21,19 +21,22 @@ def update_psf(data, dq, psf_model, patch_shape, shifts, background, eps,
 
     psf_grid, patch_grid = get_grids(patch_shape, psf_model.shape)
 
-    # add regularization term to old ssqes
+    # get current regularization term
     Ndata = data.shape[0]
     eps_eff = eps / Ndata
-    reg = np.sum((psf_model[:, 1:] - psf_model[:, :-1]) ** 2.)
-    reg += np.sum((psf_model[1:, :] - psf_model[:-1, :]) ** 2.)
-    reg *= eps_eff
-    old_ssqes += reg 
+    old_reg = local_regularization(psf_model, eps_eff)
+
+    # get current scaled squared error
+    old_ssqe = evaluate((data, dq, shifts, psf_model, psf_grid, patch_shape,
+                         background, floor, gain, clip_parms, loss_kind))
 
     # heavy lifting, get derivatives
-    derivatives = get_derivatives(data, dq, shifts, psf_model, old_ssqes,
-                                  patch_shape, psf_grid, background, floor,
-                                  gain, clip_parms, Nthreads, eps, h)
-
+    derivatives = get_derivatives(data, dq, shifts, psf_model, old_ssqe,
+                                  old_reg, patch_shape, psf_grid, background,
+                                  floor, gain, clip_parms, Nthreads, loss_kind,
+                                  eps_eff, h)
+    print derivatives
+    assert 0
     # check that small step improves the model
     temp_psf = psf_model.copy() + derivatives * h
     ssqe, reg = evaluate((data, dq, shifts, temp_psf, psf_grid, background,
@@ -46,7 +49,7 @@ def update_psf(data, dq, psf_model, patch_shape, shifts, background, eps,
         temp_psf = psf_model.copy() + derivatives * current_step
         temp_psf = np.maximum(0.0, temp_psf)
         ssqe, reg = evaluate((data, dq, shifts, temp_psf, psf_grid, background,
-                              floor, gain, clip_parms, eps))
+                              floor, gain, clip_parms, loss_kind, eps, True))
         cost = np.sum(ssqe + reg)
 
         if ((old_cost - cost) / old_cost) < tol:
