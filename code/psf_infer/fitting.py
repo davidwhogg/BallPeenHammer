@@ -4,13 +4,14 @@ import pyfits as pf
 
 from .shifts_update import update_shifts
 from .psf_update import update_psf
+from .plotting import linesearchplot
 
 def PatchFitter(data, dq, ini_psf, patch_shape,
                 background='linear', rendered_psfs=None,
                 sequence=['shifts', 'psf'], tol=1.e-4, eps=1.e-4,
-                ini_shifts=None, Nthreads=16, floor=None,
+                ini_shifts=None, Nthreads=16, floor=None, plotfilebase=None,
                 gain=None, maxiter=np.Inf, dumpfilebase=None, trim_frac=0.005,
-                min_frac=0.75, loss_kind='nll-model', core_size=5,
+                min_frac=0.75, loss_kind='nll-model', core_size=5, plot=True,
                 clip_parms=None, final_clip=[1, 4.], h=1.4901161193847656e-08):
     """
     Patch fitting routines for BallPeenHammer.
@@ -46,7 +47,7 @@ def PatchFitter(data, dq, ini_psf, patch_shape,
     mask = np.arange(data.shape[0], dtype=np.int)
 
     # run
-    tot_ssqe = np.Inf
+    tot_cost = np.Inf
     iterations = 0
     while True:
         if clip_parms is None:
@@ -84,18 +85,12 @@ def PatchFitter(data, dq, ini_psf, patch_shape,
                     data = data[ind]
                     dq = dq[ind]
                     ref_shifts = ref_shifts[ind]
-                    if patch_centers is not None:
-                        patch_centers = patch_centers[ind]
 
                     # re-run shifts
-                    shifts, ssqe = update_shifts(data[:, core_ind],
-                                                 dq[:, core_ind],
-                                                 current_psf,
-                                                 patch_shape,
-                                                 ref_shifts,
-                                                 background, Nthreads,
-                                                 loss_kind, floor, gain,
-                                                 None)
+                    shifts, ssqe = update_shifts(data[:, core_ind], dq[:, core_ind],
+                                                 current_psf, patch_shape,
+                                                 ref_shifts, background, Nthreads,
+                                                 loss_kind, floor, gain, None)
                 else:
                     ind = np.arange(data.shape[0])
 
@@ -110,24 +105,24 @@ def PatchFitter(data, dq, ini_psf, patch_shape,
                                ssqe)
 
             if kind == 'psf':
-                current_psf, ssqe = update_psf(data, dq,
-                                               current_psf,
-                                               patch_shape,
-                                               shifts,
-                                               background, eps,
-                                               loss_kind, floor, gain,
-                                               cp, Nthreads, h)
+                current_psf, cost, line_ssqes, line_regs, line_scales = \
+                    update_psf(data, dq, current_psf, patch_shape, shifts, background, eps,
+                               loss_kind, floor, gain, cp, Nthreads, h)
 
                 print 'Psf step done, ssqe: ', ssqe.sum()
-                if dumpfilebase is not None:
-                    h = pf.PrimaryHDU(current_psf)
-                    h.writeto(dumpfilebase + '_psf_%d.fits' % iterations,
-                              clobber=True)
-                    np.savetxt(dumpfilebase + '_psf_ssqe_%d.dat' % iterations,
-                               ssqe)
 
-        if ((tot_ssqe - np.sum(ssqe)) / np.sum(ssqe)) < tol:
+                if plot:
+                    linesearchplot(line_ssqes, line_regs, line_scales, plotfilebase, iterations)
+
+                if dumpfilebase is not None:
+                    hdu = pf.PrimaryHDU(current_psf)
+                    hdu.writeto(dumpfilebase + '_psf_%d.fits' % iterations,
+                              clobber=True)
+                    #np.savetxt(dumpfilebase + '_psf_ssqe_%d.dat' % iterations,
+                    #           ssqe)
+
+        if ((tot_cost - np.sum(cost)) / np.sum(cost)) < tol:
             return current_psf, shifts
         else:
             iterations += 1
-            tot_ssqe = np.sum(ssqe)
+            total_cost = np.sum(cost)

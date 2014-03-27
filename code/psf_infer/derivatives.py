@@ -29,10 +29,6 @@ def one_derivative((datum, dq, shift, psf_model, old_ssqe, old_reg, psf_grid,
     ind = np.where(derivatives != 0.0)
     counts[ind] += 1.
 
-    print counts
-    print derivatives
-    print derivatives.min()
-    assert 0
     return counts, derivatives
 
 def get_derivatives(data, dq, shifts, psf_model, old_costs, old_reg,
@@ -52,16 +48,15 @@ def get_derivatives(data, dq, shifts, psf_model, old_costs, old_reg,
     
     # Map to the processes
     Ndata = data.shape[0]
-    #pool = multiprocessing.Pool(Nthreads)
-    #mapfn = pool.map
+    pool = multiprocessing.Pool(Nthreads)
+    mapfn = pool.map
     argslist = [None] * Ndata
     for i in range(Ndata):
         argslist[i] = (data[None, i], dq[None, i], shifts[None, i], psf_model,
                        old_costs[i], old_reg, psf_grid, patch_shape,
                        background, floor, gain, clip_parms, loss_kind,
                        eps_eff, h)
-        print one_derivative(argslist[i])
-        assert 0
+
     results = list(mapfn(one_derivative, [args for args in argslist]))
 
     # Collect the results
@@ -76,7 +71,7 @@ def get_derivatives(data, dq, shifts, psf_model, old_costs, old_reg,
     pool.terminate()
     pool.join()
 
-    return total_derivatives / total_counts
+    return total_derivatives / total_counts / h
 
 def local_regularization(psf_model, eps, idx=None):
     """

@@ -10,13 +10,10 @@ def update_psf(data, dq, psf_model, patch_shape, shifts,
                background, eps,
                loss_kind, floor, gain, clip_parms, Nthreads, h,
                old_psf_steps=None, old_total_cost=np.inf, small=1.e-16, 
-               tol=1.e-1, rate=2., ini_step=0.1):
+               tol=1.e-1, rate=0.5, ini_scale=1.0, Nsearch=32):
     """
     Update the psf model, using bfgs.
     """
-    global count
-    count = 0
-
     assert Nthreads > 1, 'Single process derivative calcs not supported'
 
     psf_grid, patch_grid = get_grids(patch_shape, psf_model.shape)
@@ -35,24 +32,41 @@ def update_psf(data, dq, psf_model, patch_shape, shifts,
                                   old_reg, patch_shape, psf_grid, background,
                                   floor, gain, clip_parms, Nthreads, loss_kind,
                                   eps_eff, h)
-    print derivatives
-    assert 0
+
     # check that small step improves the model
-    temp_psf = psf_model.copy() + derivatives * h
-    ssqe, reg = evaluate((data, dq, shifts, temp_psf, psf_grid, background,
-                          floor, gain, clip_parms, eps))
-    assert (np.sum(ssqe) + reg - old_total_cost) < -small
+    temp_psf = psf_model.copy() - derivatives * h
+    ssqe = evaluate((data, dq, shifts, temp_psf, psf_grid, patch_shape,
+                     background, floor, gain, clip_parms, loss_kind))
+    reg = local_regularization(psf_model, eps_eff)
+    assert (np.sum(ssqe) + np.sum(reg) - old_total_cost) < -small
 
     # possibly heavy, update the psf
-    current_step = ini_step
-    while True:
-        temp_psf = psf_model.copy() + derivatives * current_step
+    old_cost = np.sum(ssqe) + np.sum(reg)
+    current_scale = ini_scale
+    regs = np.zeros(Nsearch)
+    ssqes = np.zeros(Nsearch)
+    costs = np.zeros(Nsearch)
+    scales = np.zeros(Nsearch)
+    for i in range(Nsearch):
+        temp_psf = psf_model.copy() - derivatives * current_scale
         temp_psf = np.maximum(0.0, temp_psf)
-        ssqe, reg = evaluate((data, dq, shifts, temp_psf, psf_grid, background,
-                              floor, gain, clip_parms, loss_kind, eps, True))
-        cost = np.sum(ssqe + reg)
+        ssqe = evaluate((data, dq, shifts, temp_psf, psf_grid, patch_shape,
+                         background, floor, gain, clip_parms, loss_kind))
 
-        if ((old_cost - cost) / old_cost) < tol:
-            return temp_psf, ssqe
-        else:
-            current_step /= rate
+        reg = np.sum(reg)
+        ssqe = np.sum(ssqe)
+        cost = ssqe + reg
+
+        regs[i] = reg
+        ssqes[i] = ssqe
+        costs[i] = cost
+        scales[i] = current_scale
+        current_scale = np.exp(np.log(current_scale) - rate)
+
+    ind = np.where(costs == np.min(costs))
+    best_cost = costs[ind]
+    best_scale = scales[ind]
+    psf_model = psf_model - derivatives * best_scale
+    psf_model = np.maximum(0.0, psf_model)
+
+    return psf_model, best_cost, ssqes, regs, scales
