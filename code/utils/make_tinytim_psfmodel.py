@@ -45,16 +45,16 @@ if __name__ == '__main__':
 
     model = convolve(model, np.ones((5, 5)))
 
-    Ng = 73
+    Ng = 201
     Nsamp = Ng ** 2
-    patch_size = 9
+    patch_size = 25
     halfminusone = (patch_size - 1) / 2
 
     # magic numbers related to tinytim output
     center = np.where(model == model.max())
     xc, yc = center[0][0], center[1][0]
-    subsample = 5
-    delta = halfminusone * subsample + 2
+    Nsubsample = 5
+    delta = halfminusone * Nsubsample + 2
     model = model[xc - delta: xc + delta + 1,
                   yc - delta: yc + delta + 1]
 
@@ -68,5 +68,5 @@ if __name__ == '__main__':
     pl.savefig('../plots/foo.png')
 
     h = pf.PrimaryHDU(model)
-    h.writeto('../psfs/tinytim-pixelconvolved-9-73.fits',
+    h.writeto('../psfs/tinytim-pixelconvolved-507-507-25-201.fits',
               clobber=True)

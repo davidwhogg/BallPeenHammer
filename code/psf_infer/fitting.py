@@ -54,7 +54,7 @@ def PatchFitter(data, dq, ini_psf, patch_shape,
             cp = None
         else:
             try:
-                cp = clip_parms[interations]
+                cp = clip_parms[iterations]
             except:
                 cp = final_clip
 
@@ -63,11 +63,17 @@ def PatchFitter(data, dq, ini_psf, patch_shape,
 
         for kind in sequence:
             if kind == 'shifts':
-
+                """
                 shifts, ssqe = update_shifts(data[:, core_ind], dq[:, core_ind],
                                              current_psf, patch_shape,
                                              ref_shifts, background, Nthreads,
                                              loss_kind, floor, gain, None)
+                                             """
+                shifts, ssqe = update_shifts(data, dq,
+                                             current_psf, patch_shape,
+                                             ref_shifts, background, Nthreads,
+                                             loss_kind, floor, gain, cp)
+                assert 0
                 if iterations == 0:
                     ref_shifts = shifts.copy()
 

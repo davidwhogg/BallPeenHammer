@@ -2,6 +2,7 @@ import numpy as np
 
 from .generation import render_psfs
 from .grid_definitions import get_grids
+from scipy.ndimage.morphology import binary_dilation as grow_mask
 
 def evaluate((data, dq, shifts, psf_model, psf_grid, patch_shape, background,
               floor, gain, clip_parms, loss_kind)):
@@ -13,10 +14,14 @@ def evaluate((data, dq, shifts, psf_model, psf_grid, patch_shape, background,
 
     ssqe = np.zeros_like(data)
     for i in range(data.shape[0]):
+        import time
+        t=time.time()
         flux, bkg_parms, bkg, ind = fit_single_patch((data[i], psfs[i],
-                                                      np.ones_like(data[i]),
                                                       dq[i], background, floor,
-                                                      gain, clip_parms))
+                                                      gain, clip_parms, 
+                                                      patch_shape))
+        print time.time()-t
+        assert 0
         model = flux * psfs[i] + bkg
 
         # chi-squared like term
@@ -25,28 +30,26 @@ def evaluate((data, dq, shifts, psf_model, psf_grid, patch_shape, background,
 
     return ssqe
 
-def fit_single_patch((data, psf, flat, dq, background, floor, gain,
-                      clip_parms)):
+def fit_single_patch((data, psf, dq, background, floor, gain,
+                      clip_parms, patch_shape)):
     """
     Fit a single patch, return the scale for the psf plus any
     background parameters.  Takes in flattened arrays for
     data and psf.
     """
-    # not sure why this `* flat` nonsense is the only 
-    # mode that works!
     if background is None:
-        A = np.atleast_2d(psf * flat).T
+        A = np.atleast_2d(psf).T
     elif background == 'constant':
-        A = np.vstack((psf * flat, np.ones_like(psf) * flat)).T
+        A = np.vstack((psf, np.ones_like(psf))).T
     elif background == 'linear':
         N = np.sqrt(psf.size).astype(np.int)
         x, y = np.meshgrid(range(N), range(N))
-        A = np.vstack((psf * flat, np.ones_like(psf) * flat,
-                       x.ravel() * flat, y.ravel() * flat)).T
+        A = np.vstack((psf, np.ones_like(psf),
+                       x.ravel(), y.ravel())).T
     else:
         assert False, 'Background model not supported: %s' % background
 
-    ind = np.where(dq == 0)[0]
+    ind = dq == 0
 
     # fit the data using least squares
     rh = np.dot(A[ind, :].T, data[ind])
@@ -68,13 +71,18 @@ def fit_single_patch((data, psf, flat, dq, background, floor, gain,
             var = floor + gain * np.abs(model)
             
             # sigma clip
-            chi = np.abs(data[ind] - model) / np.sqrt(var)
+            chi = np.zeros_like(data)
+            chi[ind] = np.abs(data[ind] - model) / np.sqrt(var)
             if type(sigma) != float:
                 condition = chi - sigma[ind]
             else:
                 condition = chi - sigma
-            idx = np.where(condition > 0)[0]
-            ind = np.delete(ind, idx)
+            
+            # redefine mask, grow and add to dq mask.
+            ind = 1 - ind.reshape(25,25)
+            idx = grow_mask((condition > 0).reshape(25,25))
+            ind = ind | idx
+            ind = (1 - ind).ravel()
 
             # refit
             rh = np.dot(A[ind, :].T, data[ind])
