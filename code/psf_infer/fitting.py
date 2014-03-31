@@ -23,9 +23,10 @@ def PatchFitter(data, dq, ini_psf, patch_shape,
     assert (patch_shape[0] * patch_shape[1]) == data.shape[1], \
         'Patch shape does not match data shape'
     for i in range(len(sequence)):
-        assert sequence[0] in ['shifts', 'psf']
+        assert sequence[i] in ['shifts', 'psf']
 
     # core inidices
+    core_shape = (core_size, core_size)
     xcenter = (patch_shape[0] - 1) / 2
     ycenter = (patch_shape[1] - 1) / 2
     buff = (core_size - 1) / 2
@@ -63,17 +64,11 @@ def PatchFitter(data, dq, ini_psf, patch_shape,
 
         for kind in sequence:
             if kind == 'shifts':
-                """
                 shifts, ssqe = update_shifts(data[:, core_ind], dq[:, core_ind],
-                                             current_psf, patch_shape,
+                                             current_psf, core_shape,
                                              ref_shifts, background, Nthreads,
                                              loss_kind, floor, gain, None)
-                                             """
-                shifts, ssqe = update_shifts(data, dq,
-                                             current_psf, patch_shape,
-                                             ref_shifts, background, Nthreads,
-                                             loss_kind, floor, gain, cp)
-                assert 0
+
                 if iterations == 0:
                     ref_shifts = shifts.copy()
 
@@ -93,9 +88,11 @@ def PatchFitter(data, dq, ini_psf, patch_shape,
                     ref_shifts = ref_shifts[ind]
 
                     # re-run shifts
-                    shifts, ssqe = update_shifts(data[:, core_ind], dq[:, core_ind],
-                                                 current_psf, patch_shape,
-                                                 ref_shifts, background, Nthreads,
+                    shifts, ssqe = update_shifts(data[:, core_ind],
+                                                 dq[:, core_ind],
+                                                 current_psf, core_shape,
+                                                 ref_shifts, background,
+                                                 Nthreads,
                                                  loss_kind, floor, gain, None)
                 else:
                     ind = np.arange(data.shape[0])
@@ -112,13 +109,15 @@ def PatchFitter(data, dq, ini_psf, patch_shape,
 
             if kind == 'psf':
                 current_psf, cost, line_ssqes, line_regs, line_scales = \
-                    update_psf(data, dq, current_psf, patch_shape, shifts, background, eps,
+                    update_psf(data, dq, current_psf, patch_shape, shifts,
+                               background, eps,
                                loss_kind, floor, gain, cp, Nthreads, h)
 
                 print 'Psf step done, ssqe: ', ssqe.sum()
 
                 if plot:
-                    linesearchplot(line_ssqes, line_regs, line_scales, plotfilebase, iterations)
+                    linesearchplot(line_ssqes, line_regs, line_scales,
+                                   plotfilebase, iterations)
 
                 if dumpfilebase is not None:
                     hdu = pf.PrimaryHDU(current_psf)

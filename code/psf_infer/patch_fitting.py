@@ -14,14 +14,10 @@ def evaluate((data, dq, shifts, psf_model, psf_grid, patch_shape, background,
 
     ssqe = np.zeros_like(data)
     for i in range(data.shape[0]):
-        import time
-        t=time.time()
         flux, bkg_parms, bkg, ind = fit_single_patch((data[i], psfs[i],
                                                       dq[i], background, floor,
                                                       gain, clip_parms, 
                                                       patch_shape))
-        print time.time()-t
-        assert 0
         model = flux * psfs[i] + bkg
 
         # chi-squared like term
