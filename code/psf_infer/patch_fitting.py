@@ -4,35 +4,39 @@ from .generation import render_psfs
 from .grid_definitions import get_grids
 from scipy.ndimage.morphology import binary_dilation as grow_mask
 
-def evaluate((data, dq, shifts, psf_model, psf_grid, patch_shape, background,
-              floor, gain, clip_parms, loss_kind)):
+def evaluate((data, dq, shifts, psf_model, parms, core)):
     """
     Compute the scaled squared error and regularization under the current 
     model.
     """
-    psfs = render_psfs(psf_model, shifts, patch_shape, psf_grid)
+    if core:
+        patch_shape = parms.core_shape
+    else:
+        patch_shape = parms.patch_shape
 
+    psfs = render_psfs(psf_model, shifts, patch_shape, parms.psf_grid)
     ssqe = np.zeros_like(data)
     for i in range(data.shape[0]):
         flux, bkg_parms, bkg, ind = fit_single_patch((data[i], psfs[i],
-                                                      dq[i], background, floor,
-                                                      gain, clip_parms, 
-                                                      patch_shape))
+                                                      dq[i], parms))
         model = flux * psfs[i] + bkg
 
         # chi-squared like term
-        ssqe[i, ind] = data_loss(data[i][ind], model[ind], loss_kind, floor,
-                                 gain)
+        ssqe[i, ind] = data_loss(data[i][ind], model[ind], bkg[ind], parms)
 
     return ssqe
 
-def fit_single_patch((data, psf, dq, background, floor, gain,
-                      clip_parms, patch_shape)):
+def fit_single_patch((data, psf, dq, parms)):
     """
     Fit a single patch, return the scale for the psf plus any
     background parameters.  Takes in flattened arrays for
     data and psf.
     """
+    gain = parms.gain
+    floor = parms.floor
+    clip_parms = parms.clip_parms
+    background = parms.background
+
     if background is None:
         A = np.atleast_2d(psf).T
     elif background == 'constant':
@@ -51,28 +55,29 @@ def fit_single_patch((data, psf, dq, background, floor, gain,
     rh = np.dot(A[ind, :].T, data[ind])
     try:
         lh = np.linalg.inv(np.dot(A[ind, :].T, A[ind, :]))
-        parms = np.dot(lh, rh)
+        fit_parms = np.dot(lh, rh)
     except:
-        parms = np.zeros(A.shape[1])
+        fit_parms = np.zeros(A.shape[1])
 
-    bkg = make_background(data, A, parms, background)
+    bkg = make_background(data, A, fit_parms, background)
 
     # sigma clip if desired
     if (clip_parms is not None) & (np.any(parms != 0)):
         Niter = clip_parms[0]
-        sigma = clip_parms[1]
+        tol = clip_parms[1]
         for i in range(Niter):
             # define model and noise
-            model = psf[ind] * parms[0] + bkg[ind]
-            var = floor + gain * np.abs(model)
+            scaled_psf = psf[ind] * fit_parms[0]
+            model = scaled_psf + bkg[ind]
+            var = floor + gain * np.abs(model) + (q * scaled_psf) ** 2.
             
             # sigma clip
             chi = np.zeros_like(data)
             chi[ind] = np.abs(data[ind] - model) / np.sqrt(var)
-            if type(sigma) != float:
-                condition = chi - sigma[ind]
+            if type(tol) != float:
+                condition = chi - tol[ind]
             else:
-                condition = chi - sigma
+                condition = chi - tol
             
             # redefine mask, grow and add to dq mask.
             ind = 1 - ind.reshape(25,25)
@@ -83,27 +88,29 @@ def fit_single_patch((data, psf, dq, background, floor, gain,
             # refit
             rh = np.dot(A[ind, :].T, data[ind])
             lh = np.linalg.inv(np.dot(A[ind, :].T, A[ind, :]))
-            parms = np.dot(lh, rh)
-            bkg = make_background(data, A, parms, background)
+            fit_parms = np.dot(lh, rh)
+            bkg = make_background(data, A, fit_parms, background)
 
-        return parms[0], parms[1:], bkg, ind
+        return fit_parms[0], fit_parms[1:], bkg, ind
     else:
-        return parms[0], None, bkg, ind
+        return fit_parms[0], None, bkg, ind
 
-def make_background(data, A, parms, background):
+def make_background(data, A, fit_parms, background):
     """
     Make the backgound model for a patch
     """
     bkg = np.zeros_like(data)
     if background is not None:
         for i in range(A.shape[1] - 1):
-            bkg += A[:, i + 1] * parms[i + 1]
+            bkg += A[:, i + 1] * fit_parms[i + 1]
     return bkg
 
-def data_loss(data, model, kind, floor, gain, var=None, q=0.02):
+def data_loss(data, model, bkg, parms):
     """
     Return the specified error/loss/nll.
     """
+    kind = parms.loss_kind
+
     if np.all(model == 0):
         sqe = np.Inf
     else:
@@ -120,7 +127,8 @@ def data_loss(data, model, kind, floor, gain, var=None, q=0.02):
     if kind == 'ssqe-sum-model':
         ssqe = sqe / np.sum(model) ** 2.
     if kind == 'nll-model':
-        var = floor + gain * np.abs(model)
+        var = parms.floor + parms.gain * np.abs(model) + \
+            (parms.q * (model - bkg)) ** 2.
         ssqe = 0.5 * (np.log(var) + sqe / var)
     return ssqe
 
@@ -155,3 +163,28 @@ def render_models(data, dq, psf_model, shifts, floor, gain, clip_parms=None,
         models[i] = model
 
     return models, ssqe
+
+def diagnostic_plot(data, model, floor, gain, patch_shape=(5, 5)):
+    """
+    Quick and dirty plot to check things are ok
+    """
+    import matplotlib.pyplot as pl
+    f = pl.figure(figsize=(12, 4))
+    pl.subplot(131)
+    pl.imshow(data.reshape(patch_shape), interpolation='nearest',
+              origin='lower')
+    pl.colorbar()
+    pl.subplot(132)
+    pl.imshow(model.reshape(patch_shape), interpolation='nearest',
+              origin='lower')
+    pl.colorbar()
+    pl.subplot(133)
+    if floor is None:
+        var = 1.
+    else:
+        var = floor + gain * np.abs(model)
+    pl.imshow(((data - model) ** 2. / var).reshape(patch_shape),
+              interpolation='nearest', origin='lower')
+    pl.colorbar()
+    f.savefig('../plots/foo.png')
+    assert 0

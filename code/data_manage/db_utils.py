@@ -112,3 +112,50 @@ def get_data(xmin, xmax, ymin, ymax, dbname):
     db.close()
 
     return data
+
+def get_matching_data(propids, dbname, tol=1.):
+    """
+    Find all repeat observations of stars using a restricted
+    list of proposal IDs.
+    """
+    # arcsec to degrees.
+    tol /= 3600.
+
+    # connect
+    db = psycopg2.connect('dbname=%s' % dbname)
+    cr = db.cursor()
+    data = {}
+
+    # first get image names.
+    imglist = []
+    for p in propids:
+        cmd = 'SELECT mast_file FROM image_meta ' + \
+            'WHERE prop_id = %s' % p
+        cr.execute(cmd)
+        imglist.extend(cr.fetchall())
+
+    print imglist
+    # run through list, get ra, dec
+    ras = []
+    decs = []
+    for img in imglist:
+        cmd = 'SELECT ra FROM patch_meta ' + \
+            'WHERE mast_file = %s' % img
+        cr.execute(cmd)
+        ras.extend(cr.fetchall())
+        print img
+        print cmd
+        print ras
+        assert 0
+    
+    print ras
+    print len(ras)
+
+    db.close()
+
+if __name__ == '__main__':
+
+    pid = ['11099']
+    dbase = 'f160w_25'
+
+    get_matching_data(pid, dbase)
