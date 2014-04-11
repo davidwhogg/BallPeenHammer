@@ -1,7 +1,6 @@
 import numpy as np
 
 from .generation import render_psfs
-from .grid_definitions import get_grids
 from scipy.ndimage.morphology import binary_dilation as grow_mask
 
 def evaluate((data, dq, shifts, psf_model, parms, core)):
@@ -69,7 +68,7 @@ def fit_single_patch((data, psf, dq, parms)):
             # define model and noise
             scaled_psf = psf[ind] * fit_parms[0]
             model = scaled_psf + bkg[ind]
-            var = floor + gain * np.abs(model) + (q * scaled_psf) ** 2.
+            var = floor + gain * np.abs(model) + (parms.q * scaled_psf) ** 2.
             
             # sigma clip
             chi = np.zeros_like(data)
@@ -80,8 +79,8 @@ def fit_single_patch((data, psf, dq, parms)):
                 condition = chi - tol
             
             # redefine mask, grow and add to dq mask.
-            ind = 1 - ind.reshape(25,25)
-            idx = grow_mask((condition > 0).reshape(25,25))
+            ind = 1 - ind.reshape(25, 25)
+            idx = grow_mask((condition > 0).reshape(25, 25))
             ind = ind | idx
             ind = (1 - ind).ravel()
 
@@ -127,8 +126,7 @@ def data_loss(data, model, bkg, parms):
     if kind == 'ssqe-sum-model':
         ssqe = sqe / np.sum(model) ** 2.
     if kind == 'nll-model':
-        var = parms.floor + parms.gain * np.abs(model) + \
-            (parms.q * (model - bkg)) ** 2.
+        var = parms.floor + parms.gain * np.abs(model)
         ssqe = 0.5 * (np.log(var) + sqe / var)
     return ssqe
 

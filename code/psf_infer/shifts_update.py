@@ -1,8 +1,6 @@
 import multiprocessing
 import numpy as np
 
-from .grid_definitions import get_grids
-from .generation import render_psfs
 from scipy.optimize import fmin_powell
 from .patch_fitting import evaluate
 
@@ -13,7 +11,7 @@ def update_shifts(data, dq, psf_model, ref_shifts, parms):
     Ndata = parms.Ndata
 
     # initialize
-    p0 = [0., 0.]
+    p0 = (0., 0.)
     ssqe = np.zeros(Ndata)
     shifts = np.zeros((Ndata, 2))
 
@@ -45,6 +43,21 @@ def update_single_shift((p0, psf_model, datum, dq, ref_shift, parms)):
     # good as fmin, and quicker.
     res = fmin_powell(shift_loss, p0, full_output=True, disp=False,
                args=(psf_model, datum, dq, ref_shift, parms))
+
+    # if hits shift min/max
+    shift = res[0].copy()
+    ind = np.abs(shift) > parms.shift_test_thresh
+    if np.any(ind):
+        # flip sign to see if it likes other side
+        new_p0 = shift
+        new_p0[ind] *= -1
+        new = fmin_powell(shift_loss, new_p0, full_output=True, disp=False,
+                          args=(psf_model, datum, dq, np.zeros((1, 2)), parms))
+        if (new[1] < res[1]):
+            ref_shift = np.array([new[0].copy()]) # in case maxiter > 1
+            return new
+        else:
+            return res
     return res
 
 def shift_loss(delta_shift, psf_model, datum, dq, ref_shift, parms):
@@ -52,7 +65,7 @@ def shift_loss(delta_shift, psf_model, datum, dq, ref_shift, parms):
     Evaluate the shift for a given patch.
     """
     shift = delta_shift + ref_shift
-
+    
     # Horrible hack for minimizers w/o bounds
     if np.any(np.abs(shift) > 0.5):
         return 1.e10

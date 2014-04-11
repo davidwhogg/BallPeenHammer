@@ -14,7 +14,8 @@ def PatchFitter(data, dq, ini_psf, patch_shape, id_start, background='linear',
                 gain=None, maxiter=np.Inf, dumpfilebase=None, trim_frac=0.005,
                 min_frac=0.75, loss_kind='nll-model', core_size=5, plot=False,
                 clip_parms=None, final_clip=[1, 4.], q=0.5, clip_shifts=False,
-                h=1.4901161193847656e-08, Nplotstop=100):
+                h=1.4901161193847656e-08, Nplotstop=100,
+                shift_test_thresh=0.475):
     """
     Patch fitting routines for BallPeenHammer.
     """
@@ -31,7 +32,7 @@ def PatchFitter(data, dq, ini_psf, patch_shape, id_start, background='linear',
     parms = InferenceParms(h, q, eps, tol, gain, plot, floor, data.shape[0],
                            id_start, Nthreads, core_size, loss_kind, Nplotstop,
                            background, None, patch_shape, plotfilebase,
-                           ini_psf.shape)
+                           ini_psf.shape, shift_test_thresh)
 
     # initialize
     current_psf = ini_psf.copy()
@@ -154,7 +155,8 @@ class InferenceParms(object):
     """
     def __init__(self, h, q, eps, tol, gain, plot, floor, Ndata, id_start, 
                  Nthreads, core_size, loss_kind, Nplotstop, background, 
-                 clip_parms, patch_shape, plotfilebase, psf_model_shape):
+                 clip_parms, patch_shape, plotfilebase, psf_model_shape,
+                 shift_test_thresh):
         self.h = h
         self.q = q
         self.eps = eps
@@ -172,6 +174,7 @@ class InferenceParms(object):
         self.patch_shape = patch_shape
         self.plotfilebase = plotfilebase
         self.psf_model_shape = psf_model_shape
+        self.shift_test_thresh = shift_test_thresh
 
         self.data_ids = range(id_start, Ndata + id_start)
 
