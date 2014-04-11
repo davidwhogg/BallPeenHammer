@@ -50,7 +50,7 @@ def update_single_shift((p0, psf_model, datum, dq, ref_shift, parms)):
     if np.any(ind):
         # flip sign to see if it likes other side
         new_p0 = shift
-        new_p0[ind] *= -1
+        new_p0[ind] *= -1.
         new = fmin_powell(shift_loss, new_p0, full_output=True, disp=False,
                           args=(psf_model, datum, dq, np.zeros((1, 2)), parms))
         if (new[1] < res[1]):

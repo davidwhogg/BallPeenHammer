@@ -61,7 +61,7 @@ def fit_single_patch((data, psf, dq, parms)):
     bkg = make_background(data, A, fit_parms, background)
 
     # sigma clip if desired
-    if (clip_parms is not None) & (np.any(parms != 0)):
+    if (clip_parms is not None) & (np.any(fit_parms != 0)):
         Niter = clip_parms[0]
         tol = clip_parms[1]
         for i in range(Niter):
