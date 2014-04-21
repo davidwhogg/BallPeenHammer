@@ -1,5 +1,6 @@
 import numpy as np
 
+from .plotting import plot_data
 from .generation import render_psfs
 from scipy.ndimage.morphology import binary_dilation as grow_mask
 
@@ -22,6 +23,13 @@ def evaluate((data, dq, shifts, psf_model, parms, core)):
 
         # chi-squared like term
         ssqe[i, ind] = data_loss(data[i][ind], model[ind], bkg[ind], parms)
+
+        if parms.plot:
+            ind = parms.flags.ravel() != 1
+            old_ssqe = np.zeros(patch_shape[0] * patch_shape[1])
+            old_ssqe[ind] = data_loss(data[i][ind], parms.old_model[ind],
+                                      parms.old_bkg[ind], parms)
+            plot_data(i, data[i], model, bkg, ssqe[i], old_ssqe, parms)
 
     return ssqe
 
@@ -63,31 +71,42 @@ def fit_single_patch((data, psf, dq, parms)):
     # sigma clip if desired
     if (clip_parms is not None) & (np.any(fit_parms != 0)):
         Niter = clip_parms[0]
+        assert Niter == 1, 'Multiple rounds of clipping not supported.'
         tol = clip_parms[1]
         for i in range(Niter):
+
             # define model and noise
-            scaled_psf = psf[ind] * fit_parms[0]
-            model = scaled_psf + bkg[ind]
+            scaled_psf = psf * fit_parms[0]
+            model = scaled_psf + bkg
+            if parms.plot:
+                parms.old_bkg = bkg
+                parms.old_model = model
+            model = model[ind]
+            scaled_psf = scaled_psf[ind]
             var = floor + gain * np.abs(model) + (parms.q * scaled_psf) ** 2.
-            
+
             # sigma clip
             chi = np.zeros_like(data)
             chi[ind] = np.abs(data[ind] - model) / np.sqrt(var)
-            if type(tol) != float:
-                condition = chi - tol[ind]
-            else:
-                condition = chi - tol
+            condition = chi - tol
+            condition = (condition > 0).reshape(parms.patch_shape)
             
             # redefine mask, grow and add to dq mask.
-            ind = 1 - ind.reshape(25, 25)
-            idx = grow_mask((condition > 0).reshape(25, 25))
-            ind = ind | idx
-            ind = (1 - ind).ravel()
+            ind = 1 - ind.reshape(parms.patch_shape)
+            idx = grow_mask(condition)
+            if parms.plot:
+                parms.flags = ind.copy()
+                parms.flags[idx] = 3
+                parms.flags[condition] = 2
+            ind = np.ravel((ind == 0) & (idx == 0))
 
             # refit
             rh = np.dot(A[ind, :].T, data[ind])
-            lh = np.linalg.inv(np.dot(A[ind, :].T, A[ind, :]))
-            fit_parms = np.dot(lh, rh)
+            try:
+                lh = np.linalg.inv(np.dot(A[ind, :].T, A[ind, :]))
+                fit_parms = np.dot(lh, rh)
+            except:
+                fit_parms = np.zeros(A.shape[1])
             bkg = make_background(data, A, fit_parms, background)
 
         return fit_parms[0], fit_parms[1:], bkg, ind

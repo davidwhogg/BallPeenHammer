@@ -14,7 +14,7 @@ def PatchFitter(data, dq, ini_psf, patch_shape, id_start, background='linear',
                 gain=None, maxiter=np.Inf, dumpfilebase=None, trim_frac=0.005,
                 min_frac=0.75, loss_kind='nll-model', core_size=5, plot=False,
                 clip_parms=None, final_clip=[1, 4.], q=0.5, clip_shifts=False,
-                h=1.4901161193847656e-08, Nplotstop=100,
+                h=1.4901161193847656e-08, Nplot=20,
                 shift_test_thresh=0.475):
     """
     Patch fitting routines for BallPeenHammer.
@@ -26,11 +26,11 @@ def PatchFitter(data, dq, ini_psf, patch_shape, id_start, background='linear',
     assert (patch_shape[0] * patch_shape[1]) == data.shape[1], \
         'Patch shape does not match data shape'
     for i in range(len(sequence)):
-        assert sequence[i] in ['shifts', 'psf', 'evaluate']
+        assert sequence[i] in ['shifts', 'psf', 'evaluate', 'plot_data']
 
     # set parameters
     parms = InferenceParms(h, q, eps, tol, gain, plot, floor, data.shape[0],
-                           id_start, Nthreads, core_size, loss_kind, Nplotstop,
+                           id_start, Nthreads, core_size, loss_kind, Nplot,
                            background, None, patch_shape, plotfilebase,
                            ini_psf.shape, shift_test_thresh)
 
@@ -132,15 +132,26 @@ def PatchFitter(data, dq, ini_psf, patch_shape, id_start, background='linear',
                               clobber=True)
 
             if kind == 'evaluate':
-                psf_grid, patch_grid = get_grids(patch_shape, current_psf.shape)
-                ssqe = evaluate((data, dq, shifts, current_psf, psf_grid,
-                                 patch_shape, background, floor, gain, cp,
-                                 loss_kind, q))
+                ssqe = evaluate((data, dq, shifts, current_psf, parms, False))
                 print 'evaluated:', ssqe.sum()
+
+            if kind == 'plot_data':
+                if clip_parms is None:
+                    parms.clip_parms = [1, np.inf]
+                else:
+                    try:
+                        parms.clip_parms = clip_parms[iterations]
+                    except:
+                        parms.clip_parms = final_clip
+                parms.plot = True
+                ssqe = evaluate((data[:parms.Nplot], dq[:parms.Nplot],
+                                 shifts[:parms.Nplot], current_psf, parms,
+                                 False))
+                parms.plot = False
 
 
         iterations += 1
-        if iterations == maxiter:
+        if iterations >= maxiter:
             return current_psf, shifts
 """
         if ((tot_cost - np.sum(cost)) / np.sum(cost)) < tol:
@@ -154,7 +165,7 @@ class InferenceParms(object):
     Class for storing and referencing parameters used in PSF inference.
     """
     def __init__(self, h, q, eps, tol, gain, plot, floor, Ndata, id_start, 
-                 Nthreads, core_size, loss_kind, Nplotstop, background, 
+                 Nthreads, core_size, loss_kind, Nplot, background, 
                  clip_parms, patch_shape, plotfilebase, psf_model_shape,
                  shift_test_thresh):
         self.h = h
@@ -165,10 +176,10 @@ class InferenceParms(object):
         self.plot = plot
         self.floor = floor
         self.Ndata = Ndata
+        self.Nplot = Nplot
         self.Nthreads = Nthreads
         self.core_size = core_size
         self.loss_kind = loss_kind
-        self.Nplotstop = Nplotstop
         self.background = background
         self.clip_parms = clip_parms
         self.patch_shape = patch_shape
@@ -176,6 +187,7 @@ class InferenceParms(object):
         self.psf_model_shape = psf_model_shape
         self.shift_test_thresh = shift_test_thresh
 
+        self.plot = False
         self.data_ids = range(id_start, Ndata + id_start)
 
         self.set_grids(core_size, patch_shape, psf_model_shape)
