@@ -13,18 +13,22 @@ def evaluate((data, dq, shifts, psf_model, parms, core)):
         patch_shape = parms.core_shape
     else:
         patch_shape = parms.patch_shape
+    min_pixels = np.ceil(parms.min_frac * patch_shape[0] * patch_shape[1])
 
     psfs = render_psfs(psf_model, shifts, patch_shape, parms.psf_grid)
-    ssqe = np.zeros_like(data)
+    ssqe = np.zeros_like(data) * parms.max_ssqe
     for i in range(data.shape[0]):
         flux, bkg_parms, bkg, ind = fit_single_patch((data[i], psfs[i],
                                                       dq[i], parms))
         model = flux * psfs[i] + bkg
 
         # chi-squared like term
-        ssqe[i, ind] = data_loss(data[i][ind], model[ind], bkg[ind], parms)
+        if model[ind].size > min_pixels:
+            ssqe[i, ind] = data_loss(data[i][ind], model[ind], bkg[ind], parms)
+        else:
+            ssqe[i] = parms.max_ssqe
 
-        if parms.plot:
+        if parms.plot_data:
             ind = parms.flags.ravel() != 1
             old_ssqe = np.zeros(patch_shape[0] * patch_shape[1])
             old_ssqe[ind] = data_loss(data[i][ind], parms.old_model[ind],
@@ -78,7 +82,7 @@ def fit_single_patch((data, psf, dq, parms)):
             # define model and noise
             scaled_psf = psf * fit_parms[0]
             model = scaled_psf + bkg
-            if parms.plot:
+            if parms.plot_data:
                 parms.old_bkg = bkg
                 parms.old_model = model
             model = model[ind]
@@ -94,7 +98,7 @@ def fit_single_patch((data, psf, dq, parms)):
             # redefine mask, grow and add to dq mask.
             ind = 1 - ind.reshape(parms.patch_shape)
             idx = grow_mask(condition)
-            if parms.plot:
+            if parms.plot_data:
                 parms.flags = ind.copy()
                 parms.flags[idx] = 3
                 parms.flags[condition] = 2

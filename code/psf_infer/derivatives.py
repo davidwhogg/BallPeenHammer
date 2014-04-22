@@ -3,25 +3,19 @@ import numpy as np
 
 from .patch_fitting import evaluate
 
-def one_derivative((datum, dq, shift, psf_model, old_ssqe, old_reg, psf_grid,
-                    patch_shape, background, floor, gain, clip_parms,
-                    loss_kind, eps, h)):
+def one_derivative((datum, dq, shift, psf_model, old_ssqe, old_reg, parms)):
     """
     Calculate the derivative for a single datum using forward differencing.
     """
     counts = np.zeros_like(psf_model)
     derivatives = np.zeros_like(psf_model)
-    datum_shape = (datum.shape[0], patch_shape)
-    for i in range(psf_model.shape[0]):
-        for j in range(psf_model.shape[1]):
+    for i in range(parms.psf_model_shape[0]):
+        for j in range(parms.psf_model_shape[1]):
             temp_psf = psf_model.copy()
-            temp_psf[i, j] += h
+            temp_psf[i, j] += parms.h
 
-            new_ssqe = evaluate((datum, dq, shift, temp_psf, psf_grid,
-                            patch_shape, background, floor, gain,
-                            clip_parms, loss_kind))
-
-            new_reg = local_regularization(temp_psf, eps, idx=(i, j))
+            new_ssqe = evaluate((datum, dq, shift, temp_psf, parms, False))
+            new_reg = local_regularization(temp_psf, parms.eps, idx=(i, j))
 
             derivatives[i, j] = np.sum(new_ssqe - old_ssqe)
             derivatives[i, j] += new_reg - old_reg[i, j]
@@ -31,38 +25,28 @@ def one_derivative((datum, dq, shift, psf_model, old_ssqe, old_reg, psf_grid,
 
     return counts, derivatives
 
-def get_derivatives(data, dq, shifts, psf_model, old_costs, old_reg,
-                    patch_shape, psf_grid, background, floor, gain,
-                    clip_parms, Nthreads, loss_kind, eps_eff, h):
+def get_derivatives(data, dq, shifts, psf_model, old_costs, old_reg, parms):
     """
     Calculate the derivatives of the objective (in patch_fitting)
     with respect to the psf model.
     """
     assert (len(data.shape) == 2) & (len(dq.shape) == 2), \
         'Data should be the (un)raveled patch'
-    #assert Nthreads > 1, 'Single process derivative calcs not supported'
 
-    # allocation
-    coverage = np.ones_like(psf_model)
-    derivatives = np.zeros_like(psf_model)
-    
     # Map to the processes
-    Ndata = data.shape[0]
-    pool = multiprocessing.Pool(Nthreads)
+    pool = multiprocessing.Pool(parms.Nthreads)
     mapfn = pool.map
-    argslist = [None] * Ndata
-    for i in range(Ndata):
+    argslist = [None] * parms.Ndata
+    for i in range(parms.Ndata):
         argslist[i] = (data[None, i], dq[None, i], shifts[None, i], psf_model,
-                       old_costs[i], old_reg, psf_grid, patch_shape,
-                       background, floor, gain, clip_parms, loss_kind,
-                       eps_eff, h)
+                       old_costs[i], old_reg, parms)
 
     results = list(mapfn(one_derivative, [args for args in argslist]))
 
     # Collect the results
     total_counts = np.zeros_like(psf_model)
     total_derivatives = np.zeros_like(psf_model)
-    for i in range(data.shape[0]):
+    for i in range(parms.Ndata):
         total_counts += results[i][0]
         total_derivatives += results[i][1]
 
@@ -71,7 +55,7 @@ def get_derivatives(data, dq, shifts, psf_model, old_costs, old_reg,
     pool.terminate()
     pool.join()
 
-    return total_derivatives / total_counts / h
+    return total_derivatives / total_counts / parms.h
 
 def local_regularization(psf_model, eps, idx=None):
     """

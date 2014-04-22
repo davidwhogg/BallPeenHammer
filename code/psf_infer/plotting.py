@@ -59,7 +59,7 @@ def plot_data(i, data, model, bkg, ssqe, old_ssqe, parms, cbscale=0.7):
             
         logkwargs = kwargs.copy()
         logkwargs['norm'] = LogNorm(vmin=m.min(), vmax=m.max())
-        
+
         # data, old_model
         pl.subplot(4, 3, 1 + j * 6)
         pl.imshow(np.abs(d), **logkwargs)
@@ -110,4 +110,4 @@ def plot_data(i, data, model, bkg, ssqe, old_ssqe, parms, cbscale=0.7):
         pl.colorbar(shrink=cbscale)
         pl.title('Negative Log-likelihood,\ntotal=%0.3f' % s.sum())
         
-    fig.savefig(parms.plotfilebase + '_data_%d.png' % i)
+    fig.savefig(parms.plotfilebase + '_data_%d.png' % parms.data_ids[i])
