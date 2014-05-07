@@ -16,6 +16,10 @@ def evaluate((data, dq, shifts, psf_model, parms, core)):
     min_pixels = np.ceil(parms.min_frac * patch_shape[0] * patch_shape[1])
 
     psfs = render_psfs(psf_model, shifts, patch_shape, parms.psf_grid)
+
+    if parms.return_flux:
+        fluxes = np.zeros(data.shape[0])
+
     ssqe = np.zeros_like(data) * parms.max_ssqe
     for i in range(data.shape[0]):
         flux, bkg_parms, bkg, ind = fit_single_patch((data[i], psfs[i],
@@ -35,7 +39,13 @@ def evaluate((data, dq, shifts, psf_model, parms, core)):
                                       parms.old_bkg[ind], parms)
             plot_data(i, data[i], model, bkg, ssqe[i], old_ssqe, parms)
 
-    return ssqe
+        if parms.return_flux:
+            fluxes[i] = flux
+
+    if parms.return_flux:
+        return ssqe, fluxes
+    else:
+        return ssqe
 
 def fit_single_patch((data, psf, dq, parms)):
     """

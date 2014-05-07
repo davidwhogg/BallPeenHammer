@@ -70,7 +70,7 @@ def plot_data(i, data, model, bkg, ssqe, old_ssqe, parms, cbscale=0.7):
         pl.imshow(m, **logkwargs)
         pl.axis('off')
         pl.colorbar(shrink=cbscale)
-        pl.title('Log(Model), bkg=%0.3f' % np.mean(bkg))
+        pl.title('Log(Model), bkg=%0.3f' % np.mean(b))
 
         # residuals
         ind = f == 0

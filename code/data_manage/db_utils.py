@@ -1,6 +1,7 @@
 import string
 import psycopg2
 import numpy as np
+import pyfits as pf
 
 def create_table(dbname, table, Npix=25):
     """
@@ -113,10 +114,9 @@ def get_data(xmin, xmax, ymin, ymax, dbname):
 
     return data
 
-def get_matching_data(propids, dbname, tol=1.):
+def get_data_with_source_ids(xmin, xmax, ymin, ymax, dbname, pathbase, tol=0.5):
     """
-    Find all repeat observations of stars using a restricted
-    list of proposal IDs.
+    Find all patches within a given region, identifying repeat observations.
     """
     # arcsec to degrees.
     tol /= 3600.
@@ -126,36 +126,133 @@ def get_matching_data(propids, dbname, tol=1.):
     cr = db.cursor()
     data = {}
 
-    # first get image names.
+    # first get image and visit names.
+    cmd = 'SELECT mast_file FROM patch_meta ' + \
+        'WHERE patch_meta.y >= %d AND patch_meta.y <= %d AND ' + \
+        'patch_meta.x >= %d AND patch_meta.x <= %d'
+    cr.execute(cmd % (ymin, ymax, xmin, xmax))
+    l = cr.fetchall()
     imglist = []
-    for p in propids:
-        cmd = 'SELECT mast_file FROM image_meta ' + \
-            'WHERE prop_id = %s' % p
-        cr.execute(cmd)
-        imglist.extend(cr.fetchall())
+    visitlist = []
+    for i, img in enumerate(l):
+        if len(img[0]) == 40:
+            imglist.append(img[0][20:-2])
+            visitlist.append(img[0][20:26])
+        else:
+            imglist.append(img[0][21:-2])
+            visitlist.append(img[0][21:27])
+    imglist = np.unique(np.array(imglist))
+    visitlist = np.unique(np.array(visitlist))
 
-    print imglist
-    # run through list, get ra, dec
-    ras = []
-    decs = []
-    for img in imglist:
-        cmd = 'SELECT ra FROM patch_meta ' + \
-            'WHERE mast_file = %s' % img
-        cr.execute(cmd)
-        ras.extend(cr.fetchall())
-        print img
-        print cmd
-        print ras
-        assert 0
-    
-    print ras
-    print len(ras)
+    # for each visit, get all patches and build array with x, y, ra, dec,
+    # image id.  Source match, assign ids
+    Nsrcs = 0
+    count = 0
+    for i in range(visitlist.size):
+        # two queries due to length of filenames
+        cmd = 'SELECT * FROM %s ' + \
+            'WHERE substring(mast_file from %d for 6) = \'%s\' AND y >= %d ' + \
+            'AND y <= %d AND x >= %d AND x <= %d'
+        data = []
+        starts = [21, 22]
+        for start in starts:
+            cr.execute(cmd % ('patch_meta', start, visitlist[i], ymin, ymax,
+                              xmin, xmax))
+            data.extend(cr.fetchall())
+
+        # construct numpy array, find unique peak fluxes
+        visit_meta = []
+        for j in range(len(data)):
+            visit_meta.append([data[j][1], data[j][2], data[j][3], data[j][4],
+                               data[j][5], data[j][6][-20:], data[j][0]])
+        visit_meta = np.array(visit_meta)
+        foo, ind = np.unique(visit_meta[:, 2], return_index=True)
+        visit_meta = visit_meta[ind]
+        if i == 0:
+            meta_data = visit_meta.copy()
+        else:
+            meta_data = np.vstack((meta_data, visit_meta))
+
+        # assign source ids
+        ras = visit_meta[:, 3].astype(np.float)
+        decs = visit_meta[:, 4].astype(np.float)
+        names = visit_meta[:, -2]
+        fluxes = visit_meta[:, 2].astype(np.float)
+        sids = np.zeros((visit_meta.shape[0], 1), dtype=np.int) - 99
+        Nobs = np.unique(names).size
+        Nsrcs += visit_meta.shape[0]
+        for j in range(visit_meta.shape[0]):
+            if sids[j] == -99:
+                sids[j] = count
+                dist = np.sqrt((ras[j] - ras) ** 2. + (decs[j] - decs) ** 2.)
+                ind = np.where((dist < tol) & (dist > 0.))[0]
+                if ind.size > Nobs:
+                    sids[j] = -99
+                else:
+                    sids[ind] = count
+                    count = 1 + count
+        if i == 0:
+            source_ids = sids
+        else:
+            source_ids = np.vstack((source_ids, np.atleast_2d(sids)))
+
+    # sort database ids
+    ind = np.argsort(meta_data[:, -1].astype(np.int))
+    meta_data = meta_data[ind]
+    source_ids = source_ids[ind]
+
+    # get pixels
+    cmd = 'SELECT * FROM pixels WHERE id = any(array['
+    cmd += ','.join(meta_data[:, -1]) + '])'
+    cr.execute(cmd) 
+    tmp = np.array(cr.fetchall()).astype(np.float)
+    pixels = tmp[:, 1:]
+
+    # get persistence and subtract
+    cmd = 'SELECT * FROM persist WHERE id = any(array['
+    cmd += ','.join(meta_data[:, -1]) + '])'
+    cr.execute(cmd) 
+    tmp = np.array(cr.fetchall()).astype(np.float)
+    pixels -= tmp[:, 1:]
+
+    # get dq flags
+    cmd = 'SELECT * FROM dq WHERE id = any(array['
+    cmd += ','.join(meta_data[:, -1]) + '])'
+    cr.execute(cmd) 
+    tmp = np.array(cr.fetchall()).astype(np.float)
+    dq = tmp[:, 1:]
 
     db.close()
 
+    # write the query
+    h = pf.PrimaryHDU(pixels)
+    h.writeto(pathbase + '_pixels.fits', clobber=True)
+    h = pf.PrimaryHDU(dq)
+    h.writeto(pathbase + '_dq.fits', clobber=True)
+    cols = pf.ColDefs([pf.Column(name='x', format='J',
+                                 array=meta_data[:, 0].astype(np.int)),
+                       pf.Column(name='y', format='J',
+                                 array=meta_data[:, 1].astype(np.int)),
+                       pf.Column(name='peak', format='D',
+                                 array=meta_data[:, 2].astype(np.float)),
+                       pf.Column(name='ra', format='D',
+                                 array=meta_data[:, 3].astype(np.float)),
+                       pf.Column(name='dec', format='D',
+                                 array=meta_data[:, 4].astype(np.float)),
+                       pf.Column(name='file', format='50A',
+                                 array=meta_data[:, 5]),
+                       pf.Column(name='db_id', format='K',
+                                 array=meta_data[:, 6].astype(np.int)),
+                       pf.Column(name='source_id', format='J',
+                                 array=source_ids.astype(np.int))])
+    t = pf.new_table(cols)
+    t.writeto(pathbase + '_meta.fits', clobber=True)
+
 if __name__ == '__main__':
 
-    pid = ['11099']
+    mn, mx = 457, 557
     dbase = 'f160w_25'
 
-    get_matching_data(pid, dbase)
+    filebase = '../data/region/f160w_25_%d_%d_%d_%d' % (mn, mx, mn, mx)
+
+    get_data_with_source_ids(mn, mx, mn, mx, dbase, filebase)

@@ -19,7 +19,7 @@ def update_psf(data, dq, psf_model, shifts, parms):
     old_ssqe = evaluate((data, dq, shifts, psf_model, parms, False))
     ind = old_ssqe < parms.max_ssqe
     old_total_cost = np.sum(old_reg) + np.mean(old_ssqe[ind])
-    print 'Current ssqe:%0.2e, reg:%0.2e, total:%0.2e' % \
+    print 'Current ssqe: %0.2e, reg: %0.2e, total: %0.2e' % \
         (np.mean(old_ssqe[ind]), old_reg.sum(), old_total_cost)
 
     # heavy lifting, get derivatives
@@ -40,6 +40,7 @@ def update_psf(data, dq, psf_model, shifts, parms):
     ssqes = np.zeros(parms.Nsearch)
     costs = np.zeros(parms.Nsearch)
     scales = np.zeros(parms.Nsearch)
+    best_cost = np.inf
     for i in range(parms.Nsearch):
         # perturb
         temp_psf = psf_model.copy() - derivatives * current_scale
@@ -49,23 +50,26 @@ def update_psf(data, dq, psf_model, shifts, parms):
         ssqe = evaluate((data, dq, shifts, temp_psf, parms, False))
         ind = ssqe < parms.max_ssqe
         ssqe = np.mean(ssqe[ind])
-        reg = np.sum(local_regularization(psf_model, parms.eps))
+        reg = np.sum(local_regularization(temp_psf, parms.eps))
 
         # store
         regs[i] = reg
         ssqes[i] = ssqe
         costs[i] = reg + ssqe
         scales[i] = current_scale
-        print i, ssqes[i], regs[i], costs[i], current_scale
+
+        # update best
+        if costs[i] < best_cost:
+            msg = 'Search step %d: ssqe: %0.4e, reg: %0.4e, cost: %0.4e, ' + \
+                'scale: %0.4e'
+            print msg % (i, ssqes[i], regs[i], costs[i], current_scale)
+            best_reg = regs[i]
+            best_ssqe = ssqes[i]
+            best_cost = costs[i]
+            best_scale = scales[i]
+
         # go down in scale
         current_scale = np.exp(np.log(current_scale) - parms.search_rate)
-
-    # look up best shift
-    ind = np.where(costs == np.min(costs))
-    best_reg = regs[ind]
-    best_ssqe = ssqes[ind]
-    best_cost = costs[ind]
-    best_scale = scales[ind]
 
     # fill in broken searches
     ind = ssqe == np.inf
@@ -73,7 +77,7 @@ def update_psf(data, dq, psf_model, shifts, parms):
     ssqes[ind] = np.max(ssqes[idx])
     costs[ind] = np.max(costs[idx])
 
-    print 'New ssqe:%0.2e, reg:%0.2e, total:%0.2e, at scale %0.2e' % \
+    print 'New ssqe: %0.2e, reg: %0.2e, total: %0.2e, at scale %0.2e' % \
         (best_ssqe, best_reg, best_cost, best_scale)
     
     # update

@@ -3,7 +3,8 @@ import numpy as np
 
 from .patch_fitting import evaluate
 
-def one_derivative((datum, dq, shift, psf_model, old_ssqe, old_reg, parms)):
+def one_data_derivative((datum, dq, shift, psf_model, old_ssqe, old_reg,
+                         parms)):
     """
     Calculate the derivative for a single datum using forward differencing.
     """
@@ -25,6 +26,23 @@ def one_derivative((datum, dq, shift, psf_model, old_ssqe, old_reg, parms)):
 
     return counts, derivatives
 
+def one_parm_derivative(((i, j), data, dq, shift, psf_model, old_ssqe, old_reg,
+                         parms)):
+    """
+    Calculate the derivative for a single model parameter using forward
+    differencing.
+    """
+    temp_psf = psf_model.copy()
+    temp_psf[i, j] += parms.h
+
+    new_ssqe = evaluate((data, dq, shift, temp_psf, parms, False))
+    new_reg = local_regularization(temp_psf, parms.eps, idx=(i, j))
+
+    derivative = np.mean(new_ssqe - old_ssqe)
+    derivative += new_reg - old_reg
+
+    return derivative / parms.h
+
 def get_derivatives(data, dq, shifts, psf_model, old_costs, old_reg, parms):
     """
     Calculate the derivatives of the objective (in patch_fitting)
@@ -36,26 +54,41 @@ def get_derivatives(data, dq, shifts, psf_model, old_costs, old_reg, parms):
     # Map to the processes
     pool = multiprocessing.Pool(parms.Nthreads)
     mapfn = pool.map
-    argslist = [None] * parms.Ndata
-    for i in range(parms.Ndata):
-        argslist[i] = (data[None, i], dq[None, i], shifts[None, i], psf_model,
-                       old_costs[i], old_reg, parms)
 
-    results = list(mapfn(one_derivative, [args for args in argslist]))
+    # calculate derivative, using specified method across the processes
+    if parms.deriv_type == 'data':
+        argslist = [None] * parms.Ndata
+        for i in range(parms.Ndata):
+            argslist[i] = (data[None, i], dq[None, i], shifts[None, i],
+                           psf_model, old_costs[i], old_reg, parms)
+        results = list(mapfn(one_data_derivative, [args for args in argslist]))
 
-    # Collect the results
-    total_counts = np.zeros_like(psf_model)
-    total_derivatives = np.zeros_like(psf_model)
-    for i in range(parms.Ndata):
-        total_counts += results[i][0]
-        total_derivatives += results[i][1]
+        total_counts = np.zeros_like(psf_model)
+        total_derivatives = np.zeros_like(psf_model)
+        for i in range(parms.Ndata):
+            total_counts += results[i][0]
+            total_derivatives += results[i][1]
+
+        derivatives = total_derivatives / total_counts / parms.h
+
+    if parms.deriv_type == 'parameter':
+        argslist = [None] * parms.psf_model_shape[0] * parms.psf_model_shape[1]
+        for i in range(parms.psf_model_shape[0]):
+            for j in range(parms.psf_model_shape[1]):
+                idx = i * parms.psf_model_shape[1] + j
+                argslist[idx] = ((i, j), data, dq, shifts, psf_model, old_costs,
+                                 old_reg[i, j], parms)
+        results = np.array((mapfn(one_parm_derivative,
+                                  [args for args in argslist])))
+
+        derivatives = results.reshape(parms.psf_model_shape)
 
     # tidy up
     pool.close()
     pool.terminate()
     pool.join()
 
-    return total_derivatives / total_counts / parms.h
+    return derivatives
 
 def local_regularization(psf_model, eps, idx=None):
     """

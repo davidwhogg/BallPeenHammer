@@ -8,7 +8,7 @@ def update_shifts(data, dq, psf_model, ref_shifts, parms):
     """
     Update the estimate of the subpixel shifts, given current psf and flat.
     """
-    Ndata = parms.Ndata
+    Ndata = data.shape[0]
 
     # initialize
     p0 = (0., 0.)
