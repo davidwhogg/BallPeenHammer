@@ -107,7 +107,7 @@ It is built with open-source code,
 For this initial project, we focus on the F160W filter for the WFC3 IR channel.  Our goal is to build 
 an accurate PSF model that is sufficiently complex to deliver precise photometry across the 
 detector.  In order to facilitate this, we have acquired as much F160W images from the MAST 
-archive that meet our criteria for use.  Are criteria for an image to be downloaded is simple: the 
+archive that meet our criteria for use.  Our criteria for an image to be downloaded is simple: the 
 images must be publicly available and have apertures that cover the full detector, namely they 
 have apertures \texttt{IR}, \texttt{IR-FIX}, \texttt{IR-UVIS-CENTER}, or \texttt{IR-UVIS-FIX}.
 
@@ -117,7 +117,7 @@ no errors in these calibrations that will effect our PSF estimation.  We choose 
 images for many reasons.  Primarily, we choose not to work with Drizzled or combined images
 because they introduce distortions to the underlying PSF that is not consistent across images, and 
 they introduce strongly correlated noise.  Additional benefits of the \FLT\ data are that they are 
-more numerous by a factor of a few, sources hit different positions on the detector due to dithering, 
+more numerous by a factor of a few, sources lie different positions on the detector due to dithering, 
 and they are well calibrated.  
 
 For each \FLT\ image, we extract high signal-to-noise objects which we believe to be stars.  There 
@@ -129,8 +129,8 @@ error flags.  More sensible approaches to source finding exist, but visual inspe
 show that these criteria generally point to high signal to noise starlike objects with little contamination.
 When modeling these sources, we require that any pixel used in the model have no data quality 
 flags other than zero (meaning no issues), as defined by the \texttt{DQ} extension in the \FLT\ file.  
-The data we extract for each source is an \rf{N by N} patch where the central pixel is defined to be the 
-brightest pixel in the data.  Figure \ref{fig:dataexamples} shows \rf{XX} random examples from the 
+The data we extract for each source is a 25 pixels by 25 pixels patch where the central pixel is defined
+to be the brightest pixel in the data.  Figure \ref{fig:data-examples} shows \rf{XX} random examples from the 
 extraction.
 
 The properties of the \WFC\ IR detector, is such that electrons from previous and current exposures 
@@ -145,6 +145,20 @@ In total, we extract sources from \rf{XXXX} images, which were download from a l
 \rf{DDMMYYYY.}  In total, we have $\sim1.8$ million sources which we deem to be starlike, distributed 
 close to Poisson across the detector.  Our Github repository contains a JSON list of the observations 
 downloaded.
+
+\begin{figure}
+\centering
+ \includegraphics[clip=true, trim=0cm 0cm 0.0cm 0.cm,width=12cm]{../../plots/paper/fig1.png}
+\caption{Example patches of size 25$\times$25 pixels from F160W \FLT\, images, displayed log-scaled.
+Shown at the top left (bottom right) is the patch with smallest (largest) peak flux whose center falls within
+100 from the center of the detector.  Other patches shown are randomly selected from the same sample.
+Above each patch is the minimum and maximum pixel value contained in the patch.
+It is clear that the majority of our patches come from observations of dense stellar fields, yet significant 
+fractions of patches with isolated or fairly isolated stars are prevalent.}
+\label{fig:data-examples}
+\end{figure}
+
+
 
 \section{Method}
 
@@ -231,5 +245,15 @@ We only fit the pixel-convolved PSF.
 Once again, why is this a good idea?
 Once again, how should this be used by other users?
 How could one infer the optical PSF from these results?
+
+\clearpage
+
+\bibliographystyle{apj}
+\begin{thebibliography}{44}
+
+\bibitem[{{Anderson \& King} (2006){Anderson} \& {King}}]{anderson06}
+{Anderson}, J., \& {King}, I. 2006, Instrument Science Report ACS 2006-1
+
+\end{thebibliography}
 
 \end{document}
