@@ -32,6 +32,12 @@ def update_psf(data, dq, psf_model, shifts, parms):
     ind = ssqe < parms.max_ssqe
     ssqe = np.mean(ssqe[ind])
     reg = local_regularization(temp_psf, parms.eps)
+    print derivatives
+    print derivatives.sum()
+    print derivatives.min()
+    print derivatives.max()
+    print ssqe, np.sum(reg), ssqe + np.sum(reg)
+    print old_ssqe, old_reg.sum(), old_total_cost
     assert (ssqe + np.sum(reg) - old_total_cost) < 0.0
 
     # find update to the psf

@@ -69,9 +69,10 @@ def get_derivatives(data, dq, shifts, psf_model, old_costs, old_reg, parms):
             total_counts += results[i][0]
             total_derivatives += results[i][1]
 
-        derivatives = total_derivatives / total_counts / parms.h
+        derivatives = total_derivatives / parms.Ndata / parms.h
 
     if parms.deriv_type == 'parameter':
+        assert 0, 'possible bug at moment'
         argslist = [None] * parms.psf_model_shape[0] * parms.psf_model_shape[1]
         for i in range(parms.psf_model_shape[0]):
             for j in range(parms.psf_model_shape[1]):

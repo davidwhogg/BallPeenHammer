@@ -15,10 +15,10 @@ def PatchFitter(data, dq, ini_psf, patch_shape, id_start, background='linear',
                 min_data_frac=0.75, loss_kind='nll-model', core_size=5,
                 plot=False, clip_parms=None, final_clip=[1, 4.], q=1.0,
                 clip_shifts=False, h=1.4901161193847656e-08, Nplot=20,
-                small=1.e-12, Nsearch=64, search_rate=0.25, search_scale=0.1,
+                small=1.e-6, Nsearch=64, search_rate=0.25, search_scale=0.05,
                 shift_test_thresh=0.475, min_frac=0.5, max_ssqe=1.e10,
                 validation_data=None, validation_dq=None, validation_ids=None,
-                deriv_type='parameter'):
+                deriv_type='data'):
     """
     Patch fitting routines for BallPeenHammer.
     """
@@ -197,7 +197,6 @@ def PatchFitter(data, dq, ini_psf, patch_shape, id_start, background='linear',
                 ssqe = evaluate((data[:parms.Nplot], dq[:parms.Nplot],
                                  shifts[:parms.Nplot], current_psf, parms,
                                  False))
-                print ssqe.sum()
                 parms.plot_data = False
 
         iterations += 1
