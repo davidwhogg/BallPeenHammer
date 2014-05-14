@@ -3,23 +3,29 @@ import matplotlib.pyplot as pl
 
 from matplotlib.colors import LogNorm, Normalize
 
-def linesearchplot(line_ssqes, line_regs, line_scales, dumpfilebase, iteration):
+def searchplot(ssqes, regs, scales, parms, small=1e-6):
     """
-    Simple evaluation plot of line search at each iteration
+    Simple evaluation plot of optimum search at each iteration
     """
-    line_regs = np.log(line_regs)
-    line_ssqes = np.log(line_ssqes)
-    line_costs = line_ssqes + line_regs
+    piston = 0.0
+    if np.any(ssqes < 0.):
+        piston = ssqes.min() - small
+    ssqes -= piston
+    regs -= piston
+    costs = ssqes + regs
+    regs = np.log(regs)
+    ssqes = np.log(ssqes)
+    scales = np.log(scales)
 
-    line_scales = np.log(line_scales)
-    f = pl.figure()
-    pl.plot(line_scales, line_costs, 'k', label='Cost')
-    pl.plot(line_scales, line_ssqes, '--k', label='Neg. LogLike')
-    pl.plot(line_scales, line_regs, '-.k', label='Regularization')
+    fig = pl.figure()
+    pl.plot(scales, costs, 'k', label='Cost')
+    pl.plot(scales, ssqes, '--k', label='Neg. LogLike')
+    pl.plot(scales, regs, '-.k', label='Regularization')
     pl.xlabel('Ln Step Scale')
-    pl.ylabel('Ln Objective')
+    pl.ylabel('Ln (Objective + %0.3e)' % (-1. * piston))
     pl.legend(loc=2)
-    f.savefig(dumpfilebase + '_linesearch_%d.png' % iteration)
+    fig.savefig(parms.plotfilebase + '_search_%d.png' % parms.iter)
+    pl.close(fig)
 
 def plot_data(i, data, model, bkg, ssqe, old_ssqe, parms, cbscale=0.7):
     """
@@ -31,7 +37,7 @@ def plot_data(i, data, model, bkg, ssqe, old_ssqe, parms, cbscale=0.7):
     clipkwargs = kwargs.copy()
     clipkwargs['vmax'] = parms.clip_parms[1]
 
-    fig= pl.figure(figsize=(12, 16))
+    fig = pl.figure(figsize=(12, 16))
     pl.subplots_adjust(wspace=0.05, hspace=0.03)
     pl.figtext(0.075, 0.7, 'Pre-clip', ha='center', va='center',
                 rotation='vertical', size=60)
@@ -111,3 +117,4 @@ def plot_data(i, data, model, bkg, ssqe, old_ssqe, parms, cbscale=0.7):
         pl.title('Negative Log-likelihood,\ntotal=%0.3f' % s.sum())
         
     fig.savefig(parms.plotfilebase + '_data_%d.png' % parms.data_ids[i])
+    pl.close(fig)

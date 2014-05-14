@@ -6,16 +6,15 @@ from .grid_definitions import get_grids
 from .shifts_update import update_shifts
 from .patch_fitting import evaluate
 from .psf_update import update_psf
-from .plotting import linesearchplot
 
 def PatchFitter(data, dq, ini_psf, patch_shape, id_start, background='linear',
                 sequence=['shifts', 'psf'], tol=1.e-4, eps=1.e-4,
                 ini_shifts=None, Nthreads=16, floor=None, plotfilebase=None,
                 gain=None, maxiter=np.Inf, dumpfilebase=None, trim_frac=0.005,
                 min_data_frac=0.75, loss_kind='nll-model', core_size=5,
-                plot=False, clip_parms=None, final_clip=[1, 4.], q=1.0,
+                plot=False, clip_parms=None, final_clip=[1, 3.], q=1.0,
                 clip_shifts=False, h=1.4901161193847656e-08, Nplot=20,
-                small=1.e-6, Nsearch=64, search_rate=0.25, search_scale=0.05,
+                small=1.e-6, Nsearch=64, search_rate=0.125, search_scale=1e-4,
                 shift_test_thresh=0.475, min_frac=0.5, max_ssqe=1.e10,
                 validation_data=None, validation_dq=None, validation_ids=None,
                 deriv_type='data'):
@@ -59,7 +58,6 @@ def PatchFitter(data, dq, ini_psf, patch_shape, id_start, background='linear',
     # run
     cost = np.Inf
     tot_cost = np.Inf
-    iterations = 0
     while True:
         for kind in sequence:
 
@@ -77,11 +75,12 @@ def PatchFitter(data, dq, ini_psf, patch_shape, id_start, background='linear',
                 print 'Validation core ssqe, max: ', ssqe[ind].max()
 
                 parms.return_flux = True
-                set_clip_parameters(clip_parms, parms, iterations, final_clip)
+                set_clip_parameters(clip_parms, parms, final_clip)
                 ssqe, fluxes = evaluate((validation_data, validation_dq,
                                          v_shifts, current_psf, parms, False))
                 parms.return_flux = False
                 ind = ssqe < parms.max_ssqe
+
                 print 'Validation full ssqe, total: ', ssqe[ind].sum()
                 print 'Validation full ssqe, min: ', ssqe[ind].min()
                 print 'Validation full ssqe, med: ', np.median(ssqe[ind])
@@ -103,17 +102,17 @@ def PatchFitter(data, dq, ini_psf, patch_shape, id_start, background='linear',
                 frac_flux_merr = np.unique(frac_flux_merr)
                 ind = np.where((frac_flux_merr != -99) & (frac_flux_merr != 99))
                 frac_flux_merr = frac_flux_merr[ind]
-                print 'Mean frac. photo. error, min', np.min(frac_flux_merr)
+		print 'Mean frac. photo. error, min', np.min(frac_flux_merr)
                 print 'Mean frac. photo. error, med', np.median(frac_flux_merr)
                 print 'Mean frac. photo. error, max', np.max(frac_flux_merr)
 
                 result = np.vstack((ssqe.sum(axis=1), fluxes, validation_ids)).T
                 if dumpfilebase is not None:
-                    np.savetxt(dumpfilebase + '_validate_%d.dat' % iterations,
+                    np.savetxt(dumpfilebase + '_validate_%d.dat' % parms.iter,
                                result)
 
-            if iterations >= maxiter:
-                return current_psf, shifts
+            if parms.iter >= maxiter:
+                return current_psf
 
             if kind == 'shifts':
                 parms.clip_parms = None
@@ -121,7 +120,7 @@ def PatchFitter(data, dq, ini_psf, patch_shape, id_start, background='linear',
                                              dq[:, parms.core_ind],
                                              current_psf, ref_shifts, parms)
 
-                if iterations == 0:
+                if parms.iter == 0:
                     ref_shifts = shifts.copy()
 
                 print 'Shift step 1 done ssqe, total: ', ssqe.sum()
@@ -157,30 +156,35 @@ def PatchFitter(data, dq, ini_psf, patch_shape, id_start, background='linear',
                 print 'Shift step 2 done ssqe, max: ', ssqe.max()
 
                 if dumpfilebase is not None:
-                    np.savetxt(dumpfilebase + '_mask_%d.dat' % iterations, mask,
-                               fmt='%d')
-                    np.savetxt(dumpfilebase + '_shifts_%d.dat' % iterations,
-                               shifts)
-                    np.savetxt(dumpfilebase + '_shift_ssqe_%d.dat' % iterations,
-                               ssqe)
+                    name = dumpfilebase + '_mask_%d.dat' % parms.iter
+                    np.savetxt(name, mask, fmt='%d')
+                    name = dumpfilebase + '_shifts_%d.dat' % parms.iter
+                    np.savetxt(name, shifts)
+                    name = dumpfilebase + '_shift_ssqe_%d.dat' % parms.iter
+                    np.savetxt(name, ssqe)
+
+                # validation
+                vdat = validation_data[:, parms.core_ind]
+                vdq = validation_dq[:, parms.core_ind]
+                v_shifts, v_ssqe = update_shifts(vdat, vdq, current_psf,
+                                                 np.zeros((vdat.size, 2)),
+                                                 parms)
 
             if kind == 'psf':
-                set_clip_parameters(clip_parms, parms, iterations, final_clip)
-                current_psf, cost, line_ssqes, line_regs, line_scales = \
-                    update_psf(data, dq, current_psf, shifts, parms)
+                set_clip_parameters(clip_parms, parms, final_clip)
+                new_psf = update_psf(current_psf, data, dq, shifts,
+                                     validation_data, validation_dq, v_shifts,
+                                     parms)
 
-                print 'Psf step done, ssqe: ', line_ssqes.min()
-
-                if parms.plot:
-                    linesearchplot(line_ssqes, line_regs, line_scales,
-                                   plotfilebase, iterations)
-
-                if dumpfilebase is not None:
-                    hdu = pf.PrimaryHDU(current_psf)
-                    hdu.writeto(dumpfilebase + '_psf_%d.fits' % iterations,
-                              clobber=True)
+                if new_psf is not None:
+                    current_psf = new_psf
+                    if (dumpfilebase is not None):
+                        hdu = pf.PrimaryHDU(current_psf)
+                        hdu.writeto(dumpfilebase + '_psf_%d.fits' % parms.iter,
+                                    clobber=True)
 
             if kind == 'evaluate':
+                assert 0
                 ssqe = evaluate((data, dq, shifts, current_psf, parms, False))
                 print 'evaluated:', ssqe.sum()
 
@@ -189,7 +193,7 @@ def PatchFitter(data, dq, ini_psf, patch_shape, id_start, background='linear',
                     parms.clip_parms = [1, np.inf]
                 else:
                     try:
-                        parms.clip_parms = clip_parms[iterations]
+                        parms.clip_parms = clip_parms[parms.iter]
                     except:
                         parms.clip_parms = final_clip
 
@@ -199,7 +203,7 @@ def PatchFitter(data, dq, ini_psf, patch_shape, id_start, background='linear',
                                  False))
                 parms.plot_data = False
 
-        iterations += 1
+        parms.iter += 1
 
 class InferenceParms(object):
     """
@@ -236,6 +240,7 @@ class InferenceParms(object):
         self.psf_model_shape = psf_model_shape
         self.shift_test_thresh = shift_test_thresh
 
+        self.iter = 0
         self.plot_data = False
         self.return_flux = False
         self.data_ids = np.arange(id_start, Ndata + id_start, dtype=np.int)
@@ -260,7 +265,7 @@ class InferenceParms(object):
         # grid defs
         self.psf_grid, x = get_grids(patch_shape, psf_model_shape)
 
-def set_clip_parameters(clip_parms, parms, iterations, final_clip):
+def set_clip_parameters(clip_parms, parms, final_clip):
     """
     Set clipping, used during full patch fitting.
     """
@@ -268,6 +273,6 @@ def set_clip_parameters(clip_parms, parms, iterations, final_clip):
         parms.clip_parms = None
     else:
         try:
-            parms.clip_parms = clip_parms[iterations]
+            parms.clip_parms = clip_parms[parms.iter]
         except:
             parms.clip_parms = final_clip

@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
     model = convolve(model, np.ones((5, 5)))
 
-    Ng = 201
+    Ng = 101
     Nsamp = Ng ** 2
     patch_size = 25
     halfminusone = (patch_size - 1) / 2
@@ -65,8 +65,8 @@ if __name__ == '__main__':
     pl.imshow(model, interpolation='nearest', origin='lower',
               norm=LogNorm(vmin=model.min(), vmax=model.max()))
     pl.gray()
-    pl.savefig('../plots/foo.png')
+    #pl.savefig('../plots/foo.png')
 
     h = pf.PrimaryHDU(model)
-    h.writeto('../psfs/tinytim-pixelconvolved-507-507-25-201.fits',
+    h.writeto('../psfs/tinytim-pixelconvolved-507-507-25-25-101-101.fits',
               clobber=True)
