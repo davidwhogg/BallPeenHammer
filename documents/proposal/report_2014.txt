@@ -1,0 +1,15 @@
+primary objectives:
+
+Our objectives are to build better flat-field (sensitivity map or gain map) calibration information for the HST WFC3 channel.  The methodology we employ is a data-driven self calibration, based on reqiring consistency across observations of stars, but making no use of the data from the HST calibration programs.  The objective is to make HST WFC3 calibration more accurate, but also to guide future calibration methodologies for HST and other space observatories.
+
+findings:
+
+We are in the process of learning a flexible model for the pixel-convolved point-spread function of the WFC3 instrument.  We need this function in order to learn calibration variations from deviations of observations away from model-based expectations.  We are finding that theoretical models of the point-spread function are good but not good enough for our calibration application.  This means, of course, that we will produce a point-spread function model along with our flat-field map.
+
+publications:
+
+There are no publications yet, because we have not converged on our model of either the point-spread function or the flat-field map.
+
+other comments:
+
+[none]
