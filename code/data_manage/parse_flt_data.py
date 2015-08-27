@@ -59,8 +59,8 @@ def run_source_extractor(sci, err, dql):
     hdu.writeto('flags.fits', clobber=True)
 
     # run source extractor
-    os.system('../../local/sextractor-2.8.6/bin/sex data.fits' +
-              ' -c ./data_manage/bph-wfc3-f160w.sex')
+    os.system('../../local/sex data.fits' +
+              ' -c ./bph-wfc3-f160w.sex')
 
 def get_patches(data, var, dql, centers, patch_size=5):
     """
@@ -121,6 +121,11 @@ if __name__ == '__main__':
     import matplotlib.pyplot as pl
     warnings.filterwarnings('ignore')
 
+    fltfile = '../../data/ic5n2en2q_flt.fits.gz'
+    sci, err, dql, hds = load_data(fltfile)
+    run_source_extractor(sci, err, dql)
+
+    """
     f = open('list.txt')
     l = f.readlines()
     f.close()
@@ -168,3 +173,4 @@ if __name__ == '__main__':
     write_fits(data, '../data/test_data.fits')
     write_fits(var, '../data/test_var.fits')
     write_fits(dq, '../data/test_dq.fits')
+    """

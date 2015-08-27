@@ -248,11 +248,49 @@ def get_data_with_source_ids(xmin, xmax, ymin, ymax, dbname, pathbase, tol=0.5):
     t = pf.new_table(cols)
     t.writeto(pathbase + '_meta.fits', clobber=True)
 
+def get_proposal_obs(dbname, propid):
+    """
+    Get all the patches associated with a proposal id.
+    """
+    # connect
+    db = psycopg2.connect('dbname=%s' % dbname)
+    cr = db.cursor()
+    data = {}
+
+    # first get image names for the propid.
+    cmd = 'SELECT mast_file FROM image_meta ' + 'WHERE image_meta.prop_id = %s'
+    cr.execute(cmd % propid)
+    l = cr.fetchall()
+
+    # get source meta data that match images.
+    cmd = 'SELECT * FROM patch_meta ' + 'WHERE patch_meta.mast_file = %s'
+
+    meta_data = []
+    for img in l:
+        if len(img[0]) == 40:
+            start = 20
+        else:
+            start = 21
+        visit = img[0][start:start + 9]
+            
+        cmd = 'SELECT * FROM patch_meta ' + \
+              'WHERE substring(mast_file from %d for 9) = \'%s\' '
+
+        cr.execute(cmd % (start + 1, visit))
+        data = cr.fetchall()
+
+        assert 0
+    
+
 if __name__ == '__main__':
 
     mn, mx = 457, 557
     dbase = 'f160w_25'
 
+    get_proposal_obs(dbase, '12696')
+
+    """
     filebase = '../data/region/f160w_25_%d_%d_%d_%d' % (mn, mx, mn, mx)
 
     get_data_with_source_ids(mn, mx, mn, mx, dbase, filebase)
+    """
