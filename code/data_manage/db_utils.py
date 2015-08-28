@@ -1,7 +1,11 @@
+import sys
 import string
 import psycopg2
 import numpy as np
 import pyfits as pf
+
+sys.path.append('../../local/')
+import pyflann
 
 def create_table(dbname, table, Npix=25):
     """
@@ -248,7 +252,7 @@ def get_data_with_source_ids(xmin, xmax, ymin, ymax, dbname, pathbase, tol=0.5):
     t = pf.new_table(cols)
     t.writeto(pathbase + '_meta.fits', clobber=True)
 
-def get_proposal_obs(dbname, propid):
+def get_proposal_obs(dbname, propid, pathbase, patch_size=81, tol=0.5):
     """
     Get all the patches associated with a proposal id.
     """
@@ -265,6 +269,7 @@ def get_proposal_obs(dbname, propid):
     # get source meta data that match images.
     cmd = 'SELECT * FROM patch_meta ' + 'WHERE patch_meta.mast_file = %s'
 
+    # get the patch meta data
     meta_data = []
     for img in l:
         if len(img[0]) == 40:
@@ -277,17 +282,80 @@ def get_proposal_obs(dbname, propid):
               'WHERE substring(mast_file from %d for 9) = \'%s\' '
 
         cr.execute(cmd % (start + 1, visit))
-        data = cr.fetchall()
+        meta_data.extend(cr.fetchall())
 
-        assert 0
-    
+    # unpack
+    N = len(meta_data)
+    data['db_ids'] = np.zeros(N, np.int)
+    data['ra-decs'] = np.zeros((N, 2))
+    data['x-ys'] = np.zeros((N, 2))
+    for i in range(len(meta_data)):
+        d = meta_data[i]
+        data['db_ids'][i] = d[0]
+        data['x-ys'][i] = d[1:3]
+        data['ra-decs'][i] = d[4:6]
+
+    # nearest neighbors
+    flann = pyflann.FLANN()
+    parms = flann.build_index(data['ra-decs'], target_precision=1.0,
+                              log_level='info')
+    inds, dists = flann.nn_index(data['ra-decs'], len(l),
+                                 check=parms['checks'])
+
+    # get data and assign source labels
+    sid = 0
+    data['source_ids'] = np.zeros(N, np.int) - 99
+    data['pixels'] = np.zeros((N, patch_size))
+    data['dq'] = np.zeros((N, patch_size), np.int)
+    for i in range(N):
+        if i % 500 == 0: print i, sid
+        if data['source_ids'][i] == -99:
+            idx = np.where(dists[i] < (tol / 3600.) ** 2.)[0]
+            if idx.size > 1:
+                tmp = ['%d' % v for v in data['db_ids'][inds[i, idx]]]
+                cmd = 'SELECT * FROM %s WHERE id = any(array['
+                cmd += ','.join(tmp) + '])'
+                cr.execute(cmd % 'pixels')
+                pixels = np.array(cr.fetchall()).astype(np.float)[:, 1:]
+                tmp = np.sum(pixels, 1)
+                cr.execute(cmd % 'persist')
+                pixels -= np.array(cr.fetchall()).astype(np.float)[:, 1:]
+                assert (np.std(tmp) / np.mean(tmp) < 0.5)
+                cr.execute(cmd % 'dq')
+                dq = np.array(cr.fetchall()).astype(np.float)[:, 1:]
+                data['source_ids'][inds[i, idx]] = sid
+                data['pixels'][inds[i, idx]] = pixels
+                data['dq'][inds[i, idx]] = dq
+                sid += 1
+
+    # write the query
+    h = pf.PrimaryHDU(data['pixels'])
+    h.writeto(pathbase + '_pixels.fits', clobber=True)
+    h = pf.PrimaryHDU(data['dq'])
+    h.writeto(pathbase + '_dq.fits', clobber=True)
+    cols = pf.ColDefs([pf.Column(name='x', format='J',
+                                 array=data['x-ys'][:, 0].astype(np.int)),
+                       pf.Column(name='y', format='J',
+                                 array=data['x-ys'][:, 0].astype(np.int)),
+                       pf.Column(name='ra', format='D',
+                                 array=data['ra-decs'][:, 0].astype(np.float)),
+                       pf.Column(name='dec', format='D',
+                                 array=data['ra-decs'][:, 0].astype(np.float)),
+                       pf.Column(name='db_id', format='K',
+                                 array=data['db_ids']),
+                       pf.Column(name='source_ids', format='J',
+                                 array=data['source_ids'])])
+    t = pf.new_table(cols)
+    t.writeto(pathbase + '_meta.fits', clobber=True)
 
 if __name__ == '__main__':
 
     mn, mx = 457, 557
-    dbase = 'f160w_25'
+    dbase = 'f160w_9'
 
-    get_proposal_obs(dbase, '12696')
+    get_proposal_obs(dbase, '12696', 'prop12696_matched')
+    
+
 
     """
     filebase = '../data/region/f160w_25_%d_%d_%d_%d' % (mn, mx, mn, mx)
