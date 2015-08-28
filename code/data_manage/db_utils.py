@@ -320,7 +320,8 @@ def get_proposal_obs(dbname, propid, pathbase, patch_size=81, tol=0.5):
                 tmp = np.sum(pixels, 1)
                 cr.execute(cmd % 'persist')
                 pixels -= np.array(cr.fetchall()).astype(np.float)[:, 1:]
-                assert (np.std(tmp) / np.mean(tmp) < 0.5)
+                if (np.std(tmp) / np.mean(tmp) > 0.5):
+                    continue
                 cr.execute(cmd % 'dq')
                 dq = np.array(cr.fetchall()).astype(np.float)[:, 1:]
                 data['source_ids'][inds[i, idx]] = sid
