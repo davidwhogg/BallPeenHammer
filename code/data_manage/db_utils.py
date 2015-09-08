@@ -84,7 +84,11 @@ def insert_into_table(table, data, dbname, Npix):
     db.commit()
     db.close()
 
-def get_data(xmin, xmax, ymin, ymax, dbname):
+def get_data(xmin, xmax, ymin, ymax, dbname, pathbase=None):
+    """
+    Query the database, return the dictionary from the query or save to file
+    if pathbase is specified.
+    """
 
     # data to grab, other than patch_meta
     keys = ['pixels', 'dq', 'var', 'persist']
@@ -116,7 +120,36 @@ def get_data(xmin, xmax, ymin, ymax, dbname):
 
     db.close()
 
-    return data
+    if pathbase is not None:
+        pixels = data['pixels'] - data['persist']
+        dq = data['dq']
+        meta_data = data['patch_meta']
+
+        # write the query
+        h = pf.PrimaryHDU(pixels)
+        h.writeto(pathbase + '_pixels.fits', clobber=True)
+        h = pf.PrimaryHDU(dq)
+        h.writeto(pathbase + '_dq.fits', clobber=True)
+        cols = pf.ColDefs([pf.Column(name='x', format='J',
+                                     array=meta_data[:, 1].astype(np.int)),
+                           pf.Column(name='y', format='J',
+                                     array=meta_data[:, 2].astype(np.int)),
+                           pf.Column(name='peak', format='D',
+                                     array=meta_data[:, 3].astype(np.float)),
+                           pf.Column(name='ra', format='D',
+                                     array=meta_data[:, 4].astype(np.float)),
+                           pf.Column(name='dec', format='D',
+                                     array=meta_data[:, 5].astype(np.float)),
+                           pf.Column(name='file', format='50A',
+                                     array=meta_data[:, 6]),
+                           pf.Column(name='db_id', format='K',
+                                     array=meta_data[:, 0].astype(np.int))])
+
+        t = pf.new_table(cols)
+        t.writeto(pathbase + '_meta.fits', clobber=True)
+
+    else:
+        return data
 
 def get_data_with_source_ids(xmin, xmax, ymin, ymax, dbname, pathbase, tol=0.5):
     """
@@ -351,15 +384,12 @@ def get_proposal_obs(dbname, propid, pathbase, patch_size=81, tol=0.5):
 
 if __name__ == '__main__':
 
-    mn, mx = 457, 557
+    mn, mx = 0, 15
     dbase = 'f160w_9'
 
-    get_proposal_obs(dbase, '12696', 'prop12696_matched')
+    #get_proposal_obs(dbase, '12696', 'prop12696_matched')
     
+    filebase = '../../data/region/f160w_9_%d_%d_%d_%d' % (mn, mx, mn, mx)
 
+    get_data(mn, mx, mn, mx, dbase, filebase)
 
-    """
-    filebase = '../data/region/f160w_25_%d_%d_%d_%d' % (mn, mx, mn, mx)
-
-    get_data_with_source_ids(mn, mx, mn, mx, dbase, filebase)
-    """

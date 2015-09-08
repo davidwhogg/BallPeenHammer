@@ -76,14 +76,11 @@ class BallPeenHammer(object):
             return np.append(np.append(self.flat_model, self.fluxes),
                              self.bkgs)
 
-    def neg_log_likelihood(self, parms, return_grads=True):
+    def neg_log_likelihood(self, flat, flxs, bkgs, return_grads=True):
         """
         Return the neg log likelihood of the data.  `parms` is an array with
         the flat, flux, and background parameters appended.
         """
-        flat = parms[:self.flat_D].reshape(self.detect_D) 
-        flxs = parms[self.flat_D:(self.flat_D + self.N)]
-        bkgs = parms[(self.flat_D + self.N):]
         if self.model_noise:
             floor, gain = parms[-2:]
         else:
@@ -179,16 +176,32 @@ class BallPeenHammer(object):
 
             print '%s, %5d: Anl %0.2e Num %0.2e %s' % (ms, i, ga[i], gn, check)
 
+    def unpack_parms(self, parms):
+        """
+        Unpack the array of parameters to the respective flat, flux, and
+        background components.
+        """
+        fluxes = parms[-2 * self.N:-1 * self.N]
+        bkgs = parms[-1 * self.N:]
+        if parms.size > 2 * self.N:
+            flat = parms[:self.flat_D]
+            modeling_flat = True
+        else:
+            flat = np.ones(self.flat_D)
+            modeling_flat = False
+        return flat, fluxes, bkgs
+
     def neg_log_post(self, parms, return_grads=True):
         """
         Return the negative log posterior probability
         """
-        nlp, flat_g, flux_g, bkg_g = self.neg_log_likelihood(parms)
+        flat, fluxes, bkgs, modeling_flat = self.unpack_parms(parms)
+        nlp, flat_g, flux_g, bkg_g = self.neg_log_likelihood(flat, fluxes,
+                                                             bkgs)
 
         # prior on flat average to one
         # this just seems to work really poorly...
         if self.alpha_flat is not None:
-            flat = parms[:self.flat_D].reshape(self.detect_D)
             nlp += self.alpha_flat * (np.mean(flat) - 1) ** 2.
             if return_grads:
                 flat_g = flat_g.reshape(self.detect_D)
@@ -198,16 +211,19 @@ class BallPeenHammer(object):
         # prior that the flux and bkg should sum close
         # to the sum of the data.  Just trying to break degeneracies!
         if self.alpha_model is not None:
-            totals = parms[self.flat_D:(self.flat_D + self.N)]
-            totals += parms[(self.flat_D + self.N):(self.flat_D + 2 * self.N)]
+            totals = fluxes + bkgs
             diff = totals - np.sum(self.data, axis=1)
             nlp += self.alpha_model * np.sum(diff ** 2.)
             if return_grads:
                 flux_g += 2. * self.alpha_model * diff
                 bkg_g += 2. * self.alpha_model * diff
 
+        # return the appropriate quantities.
         if return_grads:
-            return nlp, np.append(np.append(flat_g, flux_g), bkg_g)
+            if modeling_flat:
+                return nlp, np.append(np.append(flat_g, flux_g), bkg_g)
+            else:
+                return nlp, np.append(flux_g, bkg_g)
         else:
             return nlp
 
