@@ -2,6 +2,7 @@ import numpy as np
 
 from scipy.optimize import fmin_l_bfgs_b
 from utils import FlatMapper
+from time import time
 
 class BallPeenHammer(object):
     """
@@ -9,7 +10,8 @@ class BallPeenHammer(object):
     """
     def __init__(self, detector_shape, data, psfs, masks, patch_locs,
                  floor=0.05, gain=0.01, initial_flat=None, alpha_flat=None,
-                 alpha_model=None, model_noise=False, est_noise=False):
+                 alpha_model=None, alpha_delta=None, alpha_bkgs=None,
+                 model_noise=False, est_noise=False):
         self.N = data.shape[0]
         self.D = data.shape[1]
         self.data = data
@@ -22,7 +24,9 @@ class BallPeenHammer(object):
         self.psfs = psfs
         self.patch_locs = patch_locs
         self.flat_model = initial_flat
+        self.alpha_bkgs = alpha_bkgs
         self.alpha_flat = alpha_flat
+        self.alpha_delta = alpha_delta
         self.alpha_model = alpha_model
         self.model_noise = model_noise
         if model_noise:
@@ -30,12 +34,34 @@ class BallPeenHammer(object):
         else:
             self.est_noise = est_noise
 
+        if self.masks == None:
+            self.sum = np.sum
+            self.dot = np.dot
+        else:
+            self.sum = self.quick_masked_sum
+            self.dot = self.quick_masked_dot
+
         self.initialize(initial_flat)
 
         # ONLY SQUARE PATCHES FOR NOW!!!
         patch_side = np.int(np.sqrt(data[0].size))
         assert (patch_side - np.sqrt(data[0].size)) == 0., 'Non-square patches'
         self.flatmap = FlatMapper(self.flat_model, patch_side, patch_locs)
+
+    def quick_masked_sum(self, arr, axis=None):
+        """
+        Use numpy's masked array functionality to do the sum.
+        """
+        ma = np.ma.MaskedArray(arr, mask=self.masks)
+        return ma.sum(axis=axis)
+
+    def quick_masked_dot(self, arr1, arr2):
+        """
+        Use numpy's masked array functionality to do the sum.
+        """
+        ma1 = np.ma.MaskedArray(arr1, mask=self.masks)
+        ma2 = np.ma.MaskedArray(arr2, mask=self.masks)
+        return np.ma.dot(ma1, ma2)
 
     def initialize(self, initial_flat):
         """
@@ -46,35 +72,38 @@ class BallPeenHammer(object):
         self.fluxes = np.sum(self.data, axis=1)
         if initial_flat is None:
             self.flat_model = np.ones(self.detect_D)
+        else:
+            self.flat_model = initial_flat
 
-    def optimize(self, model_noise=False, alpha=None, disp=0):
+    def optimize(self, model_flat=True, model_noise=False, alpha=None, disp=0):
         """
         Use l_bfgs_b to minimize the log posterior.
         """
-        from time import time
         if model_noise:
             raise NotImplementedError
-        parms0 = np.append(np.append(self.flat_model.ravel(), self.fluxes),
-                           self.bkgs)
+        parms0 = self.define_parms(model_flat)
         ini_nlp = self.neg_log_post(parms0, return_grads=False)
         t0 = time()
         result = fmin_l_bfgs_b(self.neg_log_post, parms0, disp=disp)
-        self.flat_model = result[0][:self.flat_D]
-        self.fluxes = result[0][self.flat_D:(self.flat_D + self.N)]
-        self.bkgs = result[0][(self.flat_D + self.N):]
+        delta_flat, fluxes, bkgs, _ = self.unpack_parms(result[0])
+        self.flat_model = delta_flat + 1.
+        self.fluxes = fluxes
+        self.bkgs = bkgs
         print 'Optimized in %0.1f sec' % (time() - t0)
         print 'Initial Log Post. Prob.  : %0.2e' % ini_nlp
         print 'Optimized Log Post. Prob.: %0.2e' % result[1]
         return result
 
-    def define_parms(self, args=None):
+    def define_parms(self, model_flat=True):
         """
         Create a single array of parameters suitable for fmin_l_bfgs_b.
         """
         # right now just defaulting to combining all.
-        if args is None:
+        if model_flat:
             return np.append(np.append(self.flat_model, self.fluxes),
                              self.bkgs)
+        else:
+            return np.append(self.fluxes, self.bkgs)
 
     def neg_log_likelihood(self, flat, flxs, bkgs, return_grads=True):
         """
@@ -103,7 +132,7 @@ class BallPeenHammer(object):
         dmm = self.data - models
         dmm2 = dmm ** 2.
 
-        nll = 0.5 * np.sum(dmm2 / C + np.log(C))
+        nll = 0.5 * self.sum(dmm2 / C + np.log(C))
         if return_grads:
             m_grad = self.grad_model(models, dmm, dmm2, 1. / C, gain)
             flat_grad = self.grad_flat_nll(incident_model, m_grad,
@@ -126,26 +155,29 @@ class BallPeenHammer(object):
         Compute the gradient of the flat wrt the nll.
         """
         grad = np.zeros(self.detect_D)
+        g_vals = incident_model * grad_model
+        if self.masks is not None:
+            g_vals[self.masks] = 0.
+
         for i in range(self.N):
-            # it might be better to do this as one reshape.
-            g = (incident_model[i] * grad_model[i]).reshape(self.patch_D,
-                                                            self.patch_D)
-            grad[row_ind[i], col_ind[i]] += g
+            grad[row_ind[i], col_ind[i]] += g_vals[i].reshape(self.patch_D,
+                                                              self.patch_D)
+
         return grad.ravel()
         
     def grad_fluxes(self, flat_patches, psfs, grad_model):
         """
         Return the derivative of the fluxes wrt the nll.
         """
-        return np.sum(flat_patches * psfs * grad_model, axis=1)
+        return self.sum(flat_patches * psfs * grad_model, axis=1)
 
     def grad_bkgs(self, flat_patches, grad_model):
         """
         Return the derivative of the backgrounds wrt the nll.
         """
-        return np.sum(flat_patches * grad_model, axis=1)
+        return self.sum(flat_patches * grad_model, axis=1)
 
-    def grad_check(self, Ncheck, parms, h=1.e-5):
+    def grad_check(self, Ncheck, parms, h=1.e-6):
         """
         Check the derivatives numerically.
         """
@@ -184,20 +216,33 @@ class BallPeenHammer(object):
         fluxes = parms[-2 * self.N:-1 * self.N]
         bkgs = parms[-1 * self.N:]
         if parms.size > 2 * self.N:
-            flat = parms[:self.flat_D]
+            delta_flat = parms[:self.flat_D].reshape(self.detect_D)
             modeling_flat = True
         else:
-            flat = np.ones(self.flat_D)
+            delta_flat = self.flat_model - 1.
             modeling_flat = False
-        return flat, fluxes, bkgs
+        return delta_flat, fluxes, bkgs, modeling_flat
 
     def neg_log_post(self, parms, return_grads=True):
         """
         Return the negative log posterior probability
         """
-        flat, fluxes, bkgs, modeling_flat = self.unpack_parms(parms)
+        delta_flat, fluxes, bkgs, modeling_flat = self.unpack_parms(parms)
+        flat = 1. + delta_flat
         nlp, flat_g, flux_g, bkg_g = self.neg_log_likelihood(flat, fluxes,
                                                              bkgs)
+
+        if self.alpha_bkgs is not None:
+            prior_ivars = self.alpha_bkgs * np.sum(self.data, axis=1)
+            nlp += np.sum(prior_ivars * bkgs ** 2.)
+            if return_grads:
+                bkg_g += 2. * prior_ivars * bkgs
+
+        # prior on shifts...
+        if self.alpha_delta is not None:
+            nlp += self.alpha_delta * np.sum(delta_flat ** 2.)
+            if return_grads:
+                flat_g += 2. * self.alpha_delta * delta_flat.ravel()
 
         # prior on flat average to one
         # this just seems to work really poorly...
@@ -258,37 +303,27 @@ class BallPeenHammer(object):
                                     fs)
             self.flat_model[i] = y
 
-def patch_fitter(data, psf, mask, flat=None, noise_parms=None, tol=1e-3):
-    """
-    Fit patch with a constant background and PSF.
-    THIS DOES NOT MINIMIZE THE CORRECT OBJECTIVE, ONLY APPROX.
-    """
-    if noise_parms == None:
-        ivar = np.ones_like(data) 
-    else:
-        ivar = 1. / (noise_parms[0] + noise_parms[1] * (psf * np.sum(data)))
-    if flat == None:
-        flat = np.ones_like(data)
+        def patch_fitter(self, flat_patches=None, noise_model=None):
+            """
+            Fit patchs with a constant background and PSF.
+            """
+            if noise_parms == None:
+                ivars = np.ones_like(self.data) 
+            else:
+                ivars = 1. / noise_model
+                
+            if flat_patches == None:
+                flat_patches = np.ones_like(self.data)
 
-    A = np.ones((psf.size, 2))
-    A[:, 0] = psf * flat
-    A[:, 1] = flat
-    ATICA = np.dot(A.T, data * ivar)
-    ATICY = np.linalg.inv(np.dot(A.T, A * ivar[:, None]))
-    fit_parms = np.dot(ATICA, ATICY)
-    if noise_parms == None:
-        return fit_parms, ATICA
-
-    model = np.dot(A, fit_parms)
-    chi2_old = np.sum((data - model) ** 2. * ivar)
-    dlt_chi2 = np.inf
-    while dlt_chi2 > 0:
-        ivar = 1. / (noise_parms[0] + noise_parms[1] * model)
-        ATICA = np.dot(A.T, data * ivar)
-        ATICY = np.linalg.inv(np.dot(A.T, A * ivar[:, None]))
-        fit_parms = np.dot(ATICA, ATICY)
-        model = np.dot(A, fit_parms)
-        chi2_cur = np.sum((data - model) ** 2. * ivar)
-        dlt_chi2 = chi2_old - chi2_cur
-        chi2_old = chi2_cur
-    return fit_parms, ATICA
+            fit_parms = np.zeros((self.N, 2))
+            parm_uncs = np.zeros((self.N, 2))
+                                 
+            for i in range(self.N):
+                A = np.ones((self.patch_D, 2))
+                A[:, 0] = self.psfs[i] * flat_patches[i]
+                A[:, 1] = flat_patches[i]
+                ATICA = np.dot(A.T, self.data[i] * ivars[i])
+                ATICY = np.linalg.inv(np.dot(A.T, A * ivars[i][:, None]))
+                fit_parms[i] = np.dot(ATICA, ATICY)
+                parm_uncs[i] = ATICA
+            return fit_parms, parm_uncs

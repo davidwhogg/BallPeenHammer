@@ -9,17 +9,17 @@ class FakeProblem(object):
     def __init__(self, psf_model, flat_rng=0.1, patch_side=5,
                  N_mean=50, flux_range=(50, 5000), bkg_range=(0, 10),
                  detector_side=15, index=2, noise_parms=(0.05, 0.01),
-                 seed=8675309):
+                 bad_frac = 0.05, seed=8675309):
         np.random.seed(seed)
 
         self.define_layout(N_mean, detector_side, flat_rng)
         self.render_patches(psf_model, patch_side, flux_range, bkg_range,
-                            index, noise_parms)
+                            index, noise_parms, bad_frac)
 
     def define_layout(self, N_mean, detector_side, flat_rng):
         """
         Define the number of stars per pixel and the flat field
-        """
+`        """
         det_shape = (detector_side, detector_side)
 
         # stars are poisson distributed across pixels
@@ -58,7 +58,7 @@ class FakeProblem(object):
                     j += 1
 
     def render_patches(self, psf_model, patch_side, flux_range, bkg_range,
-                       index, noise_parms):
+                       index, noise_parms, bad_frac):
         """
         Make fake patches using a psf model, include noise, backgrounds, 
         and a range of flux values.
@@ -93,6 +93,16 @@ class FakeProblem(object):
         self.vars = noise_parms[0] + self.data * noise_parms[1]
         self.data += (np.random.randn(self.N, patch_side ** 2) *
                       np.sqrt(self.vars))
+
+        # make a set of masks to indicate 'bad data'
+        size = self.flat_field.size
+        bf = np.zeros(size, np.bool)
+        Nbad = np.int(np.round(size * bad_frac))
+        ind = np.random.permutation(size)[:Nbad]
+        bf[ind] = True
+        self.bad_field = bf.reshape(self.flat_field.shape)
+        badmap = FlatMapper(self.bad_field, patch_side, pls)
+        self.masks = badmap.get_1D_flat_patches()
 
     def draw_fluxes(self, flux_range, index):
         """
