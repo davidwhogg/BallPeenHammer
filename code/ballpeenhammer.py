@@ -272,6 +272,44 @@ class BallPeenHammer(object):
         else:
             return nlp
 
+    def blocked_gibbs(self, Nwalkers, Nsamps, ini_parms):
+        """
+        Do blocked gibbs sampling, alternating between flat and flux/bkg
+        parameters.  Emcee is used for proposals, drawing samples.  
+        """
+        import emcee
+        flat_pos = [ini_parms[:self.flat_D] *
+                    (1. + 1.e-4 * np.random.randn(self.flat_D))
+                    for _ in range(Nwalkers)]
+        bright_pos = [ini_parms[self.flat_D:] *
+                      (1. + 1.e-4 * np.random.randn(2 * self.N))
+                      for _ in range(Nwalkers)]
+
+        cur_sample = ini_parms
+        print Nwalkers
+        assert 0
+        from time import time
+        t0 = time()
+        s = emcee.EnsembleSampler(Nwalkers, self.flat_D,
+                                  self.log_post_given_brightnesses,
+                                  args=[cur_sample[self.flat_D:]])
+        s.run_mcmc(flat_pos, 1)
+        print time()-t0
+
+    def log_post_given_flat(self, brightness_parms, flat):
+        """
+        Compute the log of the posterior, conditioned on set flat parameters
+        """
+        parms = np.append(flat, brightness_parms)
+        return -1. * self.neg_log_post(parms, False)
+
+    def log_post_given_brightnesses(self, flat, brightness_parms):
+        """
+        Compute the log of the posterior, conditioned on set fluxes/bkgs.
+        """
+        parms = np.append(flat, brightness_parms)
+        return -1. * self.neg_log_post(parms, False)
+
     def median_model(self):
         """
         Fit patches using least squares, median fractional residuals = flat
