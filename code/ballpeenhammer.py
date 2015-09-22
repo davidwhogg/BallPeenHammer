@@ -105,6 +105,28 @@ class BallPeenHammer(object):
         else:
             return np.append(self.fluxes, self.bkgs)
 
+    def hdf5_save_parms(self, filename):
+        """
+        Save the current parameters to file.
+        """
+        import h5py
+        f = h5py.File(filename, 'w')
+        f.create_dataset('flat', data=self.flat_model)
+        f.create_dataset('bkgs', data=self.bkgs)
+        f.create_dataset('fluxes', data=self.fluxes)
+        f.close()
+
+    def hdf5_load_parms(self, filename):
+        """
+        Save the current parameters to file.
+        """
+        import h5py
+        f = h5py.File(filename, 'r')
+        self.flat_model = f['flat'][:]
+        self.bkgs = f['bkgs'][:]
+        self.fluxes = f['fluxes'][:]
+        f.close()
+
     def neg_log_likelihood(self, flat, flxs, bkgs, return_grads=True):
         """
         Return the neg log likelihood of the data.  `parms` is an array with
