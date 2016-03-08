@@ -1,0 +1,71 @@
+\documentclass[12pt,letterpaper]{article}
+\setlength{\parskip}{0.0ex}
+\setlength{\parindent}{0.2in}
+\renewenvironment{itemize}{\begin{list}{$\bullet$}{%
+  \setlength{\topsep}{0.5ex}%
+  \setlength{\parsep}{0.0ex}%
+  \setlength{\partopsep}{0.0ex}%
+  \setlength{\itemsep}{0.5ex}%
+  \setlength{\leftmargin}{1.5\parindent}}}{\end{list}}
+\newcommand{\course}[1]{\textsl{#1}}
+
+\begin{document}
+\thispagestyle{empty}
+\noindent
+\begin{tabular}{@{\textbf}ll}
+To:      & Grants Administration Office, STScI \\[1ex]
+From:    & Ross Fadely \& David W. Hogg, New York University \\[1ex]
+Subject: & HST-AR-13250.002-A interim report \\[1ex]
+Date:    & 2015-10-31 \\[1ex]
+\end{tabular}
+\bigskip
+
+\noindent
+This memo constitutes an interim report for STScI Archival Research
+Grant HST-AR-13250.002-A ``Probabilistic Self-Calibration of the WFC3
+IR Channel'', Fadely, PI.
+
+The project aims to deliver new calibration vectors for the WFC3 IR
+Channel, by building a model of all the science imaging in the HST
+Archive.  The model is a model of the point-spread function of the
+instrument, and a model of every image as a set of point sources,
+convolved with the point-spread function, and multiplied by the
+flat-field.  The project is currently drafting a paper about
+data-driven point-spread-function estimation, and once this is
+completed, will infer the flat-field.  In some more detail:
+\begin{itemize}
+\item
+We have developed a model for the pixel-by-pixel flat field for the
+WFC3 IR channel.  For data, we use all the FLT images collected in the
+F160W filter.  In short, the model optimizes (or samples) the log
+likelihood of the central 5x5 pixel patches of stars, using the PSF
+model from Jay Anderson (STScI).  Each patch is modeled as an amplitude times
+the PSF (plus a constant background amplitude), times the flat field
+model for the pixels involved.
+\item
+As a test of the validity of this procedure, we generated realistic
+(but fake) data and examined how well we can recover the 'true' values
+for the amplitudes and flat field values.  We find that the optimized
+likelihood yields parameter values very close to the input, and that
+(while slow) blocked Gibbs sampling produces posteriors consistent
+with the input values.
+\item
+For the real HST data, we find that this model produces log likelihood
+values for held out (validation) data which are higher than models
+without a pixel level flat field.  For stars with repeated
+observations (at different dithers), the model produces amplitudes
+(fluxes) for the stars whose variance is small than models without a
+pixel level flat field.  In other words, the photometry appears more
+consistent (as expected from fake data tests).
+\item
+The project is in the finishing stages.  Details about accounting for
+misidentified stars (or bad data) are being finalized.  A document and
+figures are being prepared for publication.
+\end{itemize}
+
+During the granting period, the grant directly supported part of Ross
+Fadely's salary, and indirectly supported graduate student
+M.J. Vakili, who is using the data and code and working on the paper
+on the point-spread function.
+
+\end{document}
